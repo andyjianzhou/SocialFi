@@ -326,7 +326,7 @@ const Create: NextPage = () => {
                 placeholder="BCharity DAO"
                 {...form.register('title')}
               />
-              <div>
+              <div className="pt-2">
                 <div className="label">Select Currency</div>
                 <select
                   className="w-full bg-white rounded-xl border border-gray-300 outline-none dark:bg-gray-800 disabled:bg-gray-500 disabled:bg-opacity-20 disabled:opacity-60 dark:border-gray-700/80 focus:border-brand-500 focus:ring-brand-400"
@@ -353,7 +353,7 @@ const Create: NextPage = () => {
                 type="number"
                 step="0.0001"
                 min="0"
-                max="100000"
+                max="1000000"
                 prefix={
                   <img
                     className="w-6 h-6"
@@ -371,7 +371,7 @@ const Create: NextPage = () => {
                 type="number"
                 step="0.0001"
                 min="0"
-                max="100000"
+                max="1000000"
                 prefix={
                   <img
                     className="w-6 h-6"
