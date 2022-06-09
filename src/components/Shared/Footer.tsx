@@ -14,35 +14,39 @@ const Footer: FC = () => {
       <span className="font-bold text-gray-500 dark:text-gray-300">
         © BCharity
       </span>
-      <Link href="/about" prefetch={false}>
-        <a href="/about">About</a>
-      </Link>
+      <a
+        href="https://polygive.gitbook.io/bcharity/"
+        target="_blank"
+        rel="noreferrer noopener"
+      >
+        About
+      </a>
       <Link href="/privacy" prefetch={false}>
         <a href="/privacy">Privacy</a>
       </Link>
       <a
-        href="https://bcharity.net/discord"
+        href="https://discord.gg/4vKS59q5kV"
         target="_blank"
         rel="noreferrer noopener"
       >
         Discord
       </a>
       <a
-        href="https://lenster.xyz/open"
+        href=""
         target="_blank"
         rel="noreferrer noopener"
       >
         Open
       </a>
       <a
-        href="https://lenster.xyz/donate"
+        href=""
         target="_blank"
         rel="noreferrer noopener"
       >
         Donate
       </a>
       <a
-        href="https://status.lenster.xyz"
+        href=""
         target="_blank"
         rel="noreferrer noopener"
       >
@@ -59,7 +63,7 @@ const Footer: FC = () => {
         <a href="/thanks">Thanks</a>
       </Link>
       <a
-        href="https://gitlab.com/lenster/lenster"
+        href="https://github.com/BCharity-Net/SocialFi"
         target="_blank"
         rel="noreferrer noopener"
       >
@@ -67,7 +71,7 @@ const Footer: FC = () => {
       </a>
       <a
         className="pr-3 hover:font-bold"
-        href="https://vercel.com/?utm_source=Lenster&utm_campaign=oss"
+        href="https://vercel.com/bcharity?utm_source=BCharity&utm_campaign=oss"
         target="_blank"
         rel="noreferrer noopener"
       >

@@ -5,6 +5,7 @@ import { IS_MAINNET, STATIC_ASSETS } from 'src/constants'
 import Create from './Create'
 
 const Login: FC = () => {
+  console.log(IS_MAINNET)
   const [hasConnected, setHasConnected] = useState<boolean>(false)
   const [hasProfile, setHasProfile] = useState<boolean>(true)
 
