@@ -15,7 +15,7 @@ const IFramely: FC<Props> = ({ url }) => {
   useEffect(() => {
     if (url) {
       fetch(
-        `https://iframe.ly/api/iframely?api_key=258c8580bd477c9b886b49&url=${url}`
+        `https://iframe.ly/api/iframely?api_key=f2ca08c1aeb01704aa18a0=${url}`
       )
         .then((res) => res.json())
         .then((res) => {

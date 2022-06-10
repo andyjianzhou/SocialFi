@@ -5,6 +5,11 @@ export const apps = [
     logo: 'logo.jpg'
   },
   {
+    id: 'Lensfrens',
+    name: 'Lensfrens',
+    logo: 'lensfrens.jpg'
+  },
+  {
     id: 'Lenster',
     name: 'Lenster',
     logo: 'lenster.svg'

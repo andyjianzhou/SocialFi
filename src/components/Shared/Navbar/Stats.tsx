@@ -62,7 +62,7 @@ const MenuItem: FC<Props> = ({ icon, title, isBCharity = false }) => (
         {icon}
         {isBCharity && (
           <img
-            src="/logo.svg"
+            src="/logo.jpg"
             className="w-3 h-3"
             height={12}
             width={12}

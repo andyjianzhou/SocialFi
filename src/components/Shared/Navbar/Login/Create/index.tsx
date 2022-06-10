@@ -108,7 +108,7 @@ const Create: FC<Props> = ({ isModal = false }) => {
             className="w-10 h-10"
             height={40}
             width={40}
-            src="/logo.svg"
+            src="/logo.jpg"
             alt="Logo"
           />
           <div className="text-xl font-bold">Signup to BCharity</div>

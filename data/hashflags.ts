@@ -1,1 +1,1 @@
-export const hashflags = ['bcharity', 'lenster', 'bitcoin', 'ethereum', 'lens']
+export const hashflags = ['bcharity', 'lensfrens', 'lenster', 'bitcoin', 'ethereum', 'lens']

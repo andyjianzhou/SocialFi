@@ -43,8 +43,8 @@ export const POLYGONSCAN_URL = IS_MAINNET
 export const RARIBLE_URL = IS_MAINNET
   ? 'https://rarible.com'
   : 'https://rinkeby.rarible.com'
-export const IMAGEKIT_URL_PROD = 'https://ik.imagekit.io/lensterimg'
-export const IMAGEKIT_URL_DEV = 'https://ik.imagekit.io/lensterdev'
+export const IMAGEKIT_URL_PROD = 'https://ik.imagekit.io/lensterimg/'
+export const IMAGEKIT_URL_DEV = 'https://ik.imagekit.io/lensterdev/'
 export const IMAGEKIT_URL = IS_PRODUCTION ? IMAGEKIT_URL_PROD : IMAGEKIT_URL_DEV
 
 // Web3

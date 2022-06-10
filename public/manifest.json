@@ -7,7 +7,7 @@
   "display": "standalone",
   "scope": "/",
   "start_url": "/?utm_source=homescreen&utm_medium=shortcut",
-  "iconPath": "/favicon.svg",
+  "iconPath": "/logo.jpg",
   "categories": ["social", "news", "magazines"],
   "icons": [
     {
