@@ -63,4 +63,4 @@ and visit http://localhost:4783
 
 ## ⚖️ License
 
-Lenster-BCharity is open-sourced software licensed under the © [Mozilla Public License 2.0](LICENSE).
+BCharity is open-sourced software licensed under the Lenster with © [Mozilla Public License 2.0](LICENSE).
