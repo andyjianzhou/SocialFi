@@ -12,7 +12,7 @@ const Footer: FC = () => {
       }`}
     >
       <span className="font-bold text-gray-500 dark:text-gray-300">
-        © BCharity
+        © Lenster, BCharity
       </span>
       <a
         href="https://polygive.gitbook.io/bcharity/"
@@ -21,9 +21,6 @@ const Footer: FC = () => {
       >
         About
       </a>
-      <Link href="/privacy" prefetch={false}>
-        <a href="/privacy">Privacy</a>
-      </Link>
       <a
         href="https://discord.gg/4vKS59q5kV"
         target="_blank"
@@ -32,11 +29,18 @@ const Footer: FC = () => {
         Discord
       </a>
       <a
-        href=""
+        href="https://twitter.com/BCharityFi"
         target="_blank"
         rel="noreferrer noopener"
       >
-        Open
+        Twitter
+      </a>
+      <a
+        href="https://t.me/BCharitynet"
+        target="_blank"
+        rel="noreferrer noopener"
+      >
+        Telegram
       </a>
       <a
         href=""
@@ -59,9 +63,6 @@ const Footer: FC = () => {
       >
         Vote
       </a>
-      <Link href="/thanks" prefetch={false}>
-        <a href="/thanks">Thanks</a>
-      </Link>
       <a
         href="https://github.com/BCharity-Net/SocialFi"
         target="_blank"
@@ -69,14 +70,20 @@ const Footer: FC = () => {
       >
         GitHub
       </a>
-      <a
+      <Link href="/thanks" prefetch={false}>
+        <a href="/thanks">Thanks</a>
+      </Link>
+      <Link href="/privacy" prefetch={false}>
+        <a href="/privacy">Privacy</a>
+      </Link>
+      {/* <a
         className="pr-3 hover:font-bold"
         href="https://vercel.com/bcharity?utm_source=BCharity&utm_campaign=oss"
         target="_blank"
         rel="noreferrer noopener"
       >
         ▲ Powered by Vercel
-      </a>
+      </a> */}
     </footer>
   )
 }

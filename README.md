@@ -12,10 +12,10 @@
         <img src="https://deepsource.io/gl/bcharity/bcharity.svg/?label=active+issues&show_trend=true" alt="GitHub actions">
     </a>
     <a href="https://github.com/BCharity-Net/SocialFi">
-        <img src="https://badgen.net/gitlab/last-commit/bcharity/bcharity" alt="Last Commit">
+        <img src="https://badgen.net/github/last-commit/bcharity/bcharity" alt="Last Commit">
     </a>
-    <a href="https://github.com/BCharity-Net/SocialFi/LICENSE">
-        <img src="https://badgen.net/gitlab/license/bcharity/bcharity" alt="Licence">
+    <a href="https://github.com/BCharity-Net/SocialFi/blob/main/LICENSE">
+        <img src="https://badgen.net/github/license/bcharity/bcharity" alt="Licence">
     </a>
     <a href="https://discord.gg/4vKS59q5kV">
         <img src="https://img.shields.io/discord/953679040722665512.svg?label=&logo=discord&logoColor=ffffff&color=7389D8&labelColor=6A7EC2" alt="Discord">
