@@ -12,7 +12,7 @@ const Footer: FC = () => {
       }`}
     >
       <span className="font-bold text-gray-500 dark:text-gray-300">
-        © Lenster, BCharity
+        © BCharity
       </span>
       <a
         href="https://polygive.gitbook.io/bcharity/"
@@ -75,6 +75,9 @@ const Footer: FC = () => {
       </Link>
       <Link href="/privacy" prefetch={false}>
         <a href="/privacy">Privacy</a>
+      </Link>
+      <Link href="/terms" prefetch={false}>
+        <a href="/terms">Terms</a>
       </Link>
       {/* <a
         className="pr-3 hover:font-bold"
