@@ -6,16 +6,14 @@ import Cookies from 'js-cookie'
 import dynamic from 'next/dynamic'
 import Head from 'next/head'
 import { useTheme } from 'next-themes'
-import { FC, ReactNode, useEffect, useState } from 'react'
+import { FC, ReactNode, Suspense, useEffect, useState } from 'react'
 import { Toaster } from 'react-hot-toast'
 import { useAccount, useConnect, useDisconnect } from 'wagmi'
 
 import Loading from './Loading'
 import AppContext from './utils/AppContext'
 
-const Navbar = dynamic(() => import('./Shared/Navbar'), {
-  loading: () => <Loading />
-})
+const Navbar = dynamic(() => import('./Shared/Navbar'), { suspense: true })
 
 export const CURRENT_USER_QUERY = gql`
   query CurrentUser($ownedBy: [EthereumAddress!]) {
@@ -24,6 +22,9 @@ export const CURRENT_USER_QUERY = gql`
         ...MinimalProfileFields
         isDefault
       }
+    }
+    userSigNonces {
+      lensHubOnChainSigNonce
     }
   }
   ${MinimalProfileFields}
@@ -39,6 +40,7 @@ const SiteLayout: FC<Props> = ({ children }) => {
   const [staffMode, setStaffMode] = useState<boolean>()
   const [refreshToken, setRefreshToken] = useState<string>()
   const [selectedProfile, setSelectedProfile] = useState<number>(0)
+  const [userSigNonce, setUserSigNonce] = useState<number>(0)
   const { data: accountData } = useAccount()
   const { activeConnector } = useConnect()
   const { disconnect } = useDisconnect()
@@ -63,6 +65,7 @@ const SiteLayout: FC<Props> = ({ children }) => {
   useEffect(() => {
     setRefreshToken(Cookies.get('refreshToken'))
     setSelectedProfile(localStorage.selectedProfile)
+    setUserSigNonce(data?.userSigNonces?.lensHubOnChainSigNonce)
     setStaffMode(localStorage.staffMode === 'true')
     setPageLoading(false)
 
@@ -76,11 +79,18 @@ const SiteLayout: FC<Props> = ({ children }) => {
       Cookies.remove('refreshToken')
       disconnect()
     })
-  }, [selectedProfile, activeConnector, disconnect])
+  }, [
+    selectedProfile,
+    activeConnector,
+    disconnect,
+    data?.userSigNonces?.lensHubOnChainSigNonce
+  ])
 
   const injectedGlobalContext = {
     selectedProfile,
     setSelectedProfile,
+    userSigNonce,
+    setUserSigNonce,
     staffMode,
     setStaffMode,
     profiles: profiles,
@@ -122,10 +132,12 @@ const SiteLayout: FC<Props> = ({ children }) => {
         />
       </Head>
       <Toaster position="bottom-right" toastOptions={toastOptions} />
-      <div className="flex flex-col min-h-screen">
-        <Navbar />
-        {children}
-      </div>
+      <Suspense fallback={<Loading />}>
+        <div className="flex flex-col min-h-screen">
+          <Navbar />
+          {children}
+        </div>
+      </Suspense>
     </AppContext.Provider>
   )
 }

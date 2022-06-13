@@ -24,7 +24,7 @@ import { STATIC_ASSETS } from 'src/constants'
 import { COLLECT_QUERY } from '../Actions/Collect/CollectModule'
 import Fund from './Fund'
 
-export const CROWDFUND_REVENUE_QUERY = gql`
+export const PUBLICATION_REVENUE_QUERY = gql`
   query FundraiseRevenue($request: PublicationRevenueQueryRequest!) {
     publicationRevenue(request: $request) {
       earnings {
@@ -71,7 +71,7 @@ const Fundraise: FC<Props> = ({ fund }) => {
   const collectModule: any = data?.publication?.collectModule
 
   const { data: revenueData, loading: revenueLoading } = useQuery(
-    CROWDFUND_REVENUE_QUERY,
+    PUBLICATION_REVENUE_QUERY,
     {
       variables: {
         request: {
