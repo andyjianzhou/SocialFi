@@ -70,8 +70,10 @@ export type Scalars = {
   Sources: any
   /** timestamp date custom scalar type */
   TimestampScalar: any
-  /** The tx has */
+  /** The tx hash */
   TxHash: any
+  /** The tx id */
+  TxId: any
   /** UnixTimestamp custom scalar type */
   UnixTimestamp: any
   /** Url scalar type */
@@ -211,6 +213,8 @@ export type Comment = {
   createdAt: Scalars['DateTime']
   /** This will bring back the first comment of a comment and only be defined if using `publication` query and `commentOf` */
   firstComment?: Maybe<Comment>
+  /** If the publication has been hidden if it has then the content and media is not available */
+  hidden: Scalars['Boolean']
   /** The internal publication id */
   id: Scalars['InternalPublicationId']
   /** The top level post/mirror this comment lives on */
@@ -221,10 +225,16 @@ export type Comment = {
   onChainContentURI: Scalars['String']
   /** The profile ref */
   profile: Profile
+  reaction?: Maybe<ReactionTypes>
   /** The reference module */
   referenceModule?: Maybe<ReferenceModule>
   /** The publication stats */
   stats: PublicationStats
+}
+
+/** The social comment */
+export type CommentReactionArgs = {
+  request?: InputMaybe<ReactionFieldResolverRequest>
 }
 
 /** The create burn eip 712 typed data */
@@ -1142,7 +1152,10 @@ export type HasMirroredResult = {
 }
 
 export type HasTxHashBeenIndexedRequest = {
-  txHash: Scalars['TxHash']
+  /** Tx hash.. if your using the broadcaster you should use txId due to gas price upgrades */
+  txHash?: InputMaybe<Scalars['TxHash']>
+  /** Tx id.. if your using the broadcaster you should always use this field */
+  txId?: InputMaybe<Scalars['TxId']>
 }
 
 export type HidePublicationRequest = {
@@ -1308,6 +1321,8 @@ export type Mirror = {
   collectNftAddress?: Maybe<Scalars['ContractAddress']>
   /** The date the post was created on */
   createdAt: Scalars['DateTime']
+  /** If the publication has been hidden if it has then the content and media is not available */
+  hidden: Scalars['Boolean']
   /** The internal publication id */
   id: Scalars['InternalPublicationId']
   /** The metadata for the post */
@@ -1318,10 +1333,16 @@ export type Mirror = {
   onChainContentURI: Scalars['String']
   /** The profile ref */
   profile: Profile
+  reaction?: Maybe<ReactionTypes>
   /** The reference module */
   referenceModule?: Maybe<ReferenceModule>
   /** The publication stats */
   stats: PublicationStats
+}
+
+/** The social mirror */
+export type MirrorReactionArgs = {
+  request?: InputMaybe<ReactionFieldResolverRequest>
 }
 
 export type MirrorablePublication = Comment | Post
@@ -1350,6 +1371,7 @@ export type ModuleInfo = {
 export type Mutation = {
   __typename?: 'Mutation'
   ach?: Maybe<Scalars['Void']>
+  addReaction?: Maybe<Scalars['Void']>
   authenticate: AuthenticationResult
   broadcast: RelayResult
   claim: RelayResult
@@ -1370,11 +1392,16 @@ export type Mutation = {
   createUnfollowTypedData: CreateUnfollowBroadcastItemResult
   hidePublication?: Maybe<Scalars['Void']>
   refresh: AuthenticationResult
+  removeReaction?: Maybe<Scalars['Void']>
   reportPublication?: Maybe<Scalars['Void']>
 }
 
 export type MutationAchArgs = {
   request: AchRequest
+}
+
+export type MutationAddReactionArgs = {
+  request: ReactionRequest
 }
 
 export type MutationAuthenticateArgs = {
@@ -1449,14 +1476,17 @@ export type MutationCreateSetProfileImageUriTypedDataArgs = {
 }
 
 export type MutationCreateSetProfileMetadataTypedDataArgs = {
+  options?: InputMaybe<TypedDataOptions>
   request: CreatePublicSetProfileMetadataUriRequest
 }
 
 export type MutationCreateToggleFollowTypedDataArgs = {
+  options?: InputMaybe<TypedDataOptions>
   request: CreateToggleFollowRequest
 }
 
 export type MutationCreateUnfollowTypedDataArgs = {
+  options?: InputMaybe<TypedDataOptions>
   request: UnfollowRequest
 }
 
@@ -1466,6 +1496,10 @@ export type MutationHidePublicationArgs = {
 
 export type MutationRefreshArgs = {
   request: RefreshRequest
+}
+
+export type MutationRemoveReactionArgs = {
+  request: ReactionRequest
 }
 
 export type MutationReportPublicationArgs = {
@@ -1624,7 +1658,7 @@ export type NotificationRequest = {
   cursor?: InputMaybe<Scalars['Cursor']>
   limit?: InputMaybe<Scalars['LimitScalar']>
   /** The profile id */
-  profileId?: InputMaybe<Scalars['ProfileId']>
+  profileId: Scalars['ProfileId']
   /** The App Id */
   sources?: InputMaybe<Array<Scalars['Sources']>>
 }
@@ -1722,6 +1756,8 @@ export type Post = {
   collectedBy?: Maybe<Wallet>
   /** The date the post was created on */
   createdAt: Scalars['DateTime']
+  /** If the publication has been hidden if it has then the content and media is not available */
+  hidden: Scalars['Boolean']
   /** The internal publication id */
   id: Scalars['InternalPublicationId']
   /** The metadata for the post */
@@ -1730,10 +1766,16 @@ export type Post = {
   onChainContentURI: Scalars['String']
   /** The profile ref */
   profile: Profile
+  reaction?: Maybe<ReactionTypes>
   /** The reference module */
   referenceModule?: Maybe<ReferenceModule>
   /** The publication stats */
   stats: PublicationStats
+}
+
+/** The social post */
+export type PostReactionArgs = {
+  request?: InputMaybe<ReactionFieldResolverRequest>
 }
 
 /** The Profile */
@@ -1749,6 +1791,8 @@ export type Profile = {
   dispatcher?: Maybe<Dispatcher>
   /** The follow module */
   followModule?: Maybe<FollowModule>
+  /** Follow nft address */
+  followNftAddress?: Maybe<Scalars['ContractAddress']>
   /** The profile handle */
   handle: Scalars['Handle']
   /** The profile id */
@@ -1765,6 +1809,11 @@ export type Profile = {
   picture?: Maybe<ProfileMedia>
   /** Profile stats */
   stats: ProfileStats
+}
+
+export type ProfileFollowModuleBeenRedeemedRequest = {
+  followProfileId: Scalars['ProfileId']
+  redeemingProfileId: Scalars['ProfileId']
 }
 
 export type ProfileFollowModuleRedeemParams = {
@@ -1934,7 +1983,8 @@ export type PublicationSearchResultItem = Comment | Post
 export enum PublicationSortCriteria {
   Latest = 'LATEST',
   TopCollected = 'TOP_COLLECTED',
-  TopCommented = 'TOP_COMMENTED'
+  TopCommented = 'TOP_COMMENTED',
+  TopMirrored = 'TOP_MIRRORED'
 }
 
 /** The publication stats */
@@ -1946,6 +1996,10 @@ export type PublicationStats = {
   totalAmountOfComments: Scalars['Int']
   /** The total amount of mirrors */
   totalAmountOfMirrors: Scalars['Int']
+  /** The total amount of upvotes */
+  totalDownvotes: Scalars['Int']
+  /** The total amount of downvotes */
+  totalUpvotes: Scalars['Int']
 }
 
 /** The publication types */
@@ -1996,6 +2050,8 @@ export type Query = {
   notifications: PaginatedNotificationResult
   pendingApprovalFollows: PendingApproveFollowsResult
   ping: Scalars['String']
+  profile?: Maybe<Profile>
+  profileFollowModuleBeenRedeemed: Scalars['Boolean']
   profileRevenue: ProfileRevenueResult
   profiles: PaginatedProfileResult
   publication?: Maybe<Publication>
@@ -2081,6 +2137,14 @@ export type QueryPendingApprovalFollowsArgs = {
   request: PendingApprovalFollowsRequest
 }
 
+export type QueryProfileArgs = {
+  request: SingleProfileQueryRequest
+}
+
+export type QueryProfileFollowModuleBeenRedeemedArgs = {
+  request: ProfileFollowModuleBeenRedeemedRequest
+}
+
 export type QueryProfileRevenueArgs = {
   request: ProfileRevenueQueryRequest
 }
@@ -2115,6 +2179,26 @@ export type QueryVerifyArgs = {
 
 export type QueryWhoCollectedPublicationArgs = {
   request: WhoCollectedPublicationRequest
+}
+
+export type ReactionFieldResolverRequest = {
+  /** Profile id */
+  profileId: Scalars['ProfileId']
+}
+
+export type ReactionRequest = {
+  /** Profile id to perform the action */
+  profileId: Scalars['ProfileId']
+  /** The internal publication id */
+  publicationId: Scalars['InternalPublicationId']
+  /** The reaction */
+  reaction: ReactionTypes
+}
+
+/** Reaction types */
+export enum ReactionTypes {
+  Downvote = 'DOWNVOTE',
+  Upvote = 'UPVOTE'
 }
 
 export type ReferenceModule = FollowOnlyReferenceModuleSettings
@@ -2154,8 +2238,10 @@ export type RelayResult = RelayError | RelayerResult
 /** The relayer result */
 export type RelayerResult = {
   __typename?: 'RelayerResult'
-  /** The tx hash */
+  /** The tx hash - you should use the `txId` as your identifier as gas prices can be upgraded meaning txHash will change */
   txHash: Scalars['TxHash']
+  /** The tx id */
+  txId: Scalars['TxId']
 }
 
 export type ReportPublicationRequest = {
@@ -2269,6 +2355,13 @@ export type SignedAuthChallenge = {
   signature: Scalars['Signature']
 }
 
+export type SingleProfileQueryRequest = {
+  /** The handle for the profile */
+  handle?: InputMaybe<Scalars['Handle']>
+  /** The profile id */
+  profileId?: InputMaybe<Scalars['ProfileId']>
+}
+
 export type TimedFeeCollectModuleParams = {
   /** The collect module amount info */
   amount: ModuleFeeAmountParams
@@ -2322,6 +2415,7 @@ export type TransactionIndexedResult = {
   indexed: Scalars['Boolean']
   /** Publications can be indexed but the ipfs link for example not findable for x time. This allows you to work that out for publications. If its not a publication tx then it always be null. */
   metadataStatus?: Maybe<PublicationMetadataStatus>
+  txHash: Scalars['TxHash']
   txReceipt?: Maybe<TransactionReceipt>
 }
 
@@ -2339,7 +2433,7 @@ export type TransactionReceipt = {
   logs: Array<Log>
   logsBloom: Scalars['String']
   root?: Maybe<Scalars['String']>
-  status: Scalars['Int']
+  status?: Maybe<Scalars['Int']>
   to?: Maybe<Scalars['EthereumAddress']>
   transactionHash: Scalars['TxHash']
   transactionIndex: Scalars['Int']
@@ -2368,6 +2462,7 @@ export type UpdateProfileImageRequest = {
 export type UserSigNonces = {
   __typename?: 'UserSigNonces'
   lensHubOnChainSigNonce: Scalars['Nonce']
+  peripheryOnChainSigNonce: Scalars['Nonce']
 }
 
 /** The access request */

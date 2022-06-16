@@ -144,8 +144,8 @@ const Profile: FC<Props> = ({ profile }) => {
 
   const [broadcast, { data: broadcastData, loading: broadcastLoading }] =
     useMutation(BROADCAST_MUTATION, {
-      onCompleted({ broadcast }) {
-        if (broadcast?.reason !== 'NOT_ALLOWED') {
+      onCompleted({ data }) {
+        if (data?.broadcast?.reason !== 'NOT_ALLOWED') {
           onCompleted()
         }
       },
@@ -182,8 +182,8 @@ const Profile: FC<Props> = ({ profile }) => {
           }
           if (RELAY_ON) {
             broadcast({ variables: { request: { id, signature } } }).then(
-              ({ data: { broadcast }, errors }) => {
-                if (errors || broadcast?.reason === 'NOT_ALLOWED') {
+              ({ data, errors }) => {
+                if (errors || data?.broadcast?.reason === 'NOT_ALLOWED') {
                   write({ args: inputStruct })
                 }
               }

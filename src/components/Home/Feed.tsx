@@ -18,7 +18,10 @@ import React, { FC, useContext, useState } from 'react'
 import { useInView } from 'react-cool-inview'
 
 const HOME_FEED_QUERY = gql`
-  query HomeFeed($request: TimelineRequest!) {
+  query HomeFeed(
+    $request: TimelineRequest!
+    $reactionRequest: ReactionFieldResolverRequest
+  ) {
     timeline(request: $request) {
       items {
         ... on Post {

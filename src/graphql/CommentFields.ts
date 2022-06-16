@@ -11,6 +11,7 @@ export const CommentFields = gql`
     profile {
       ...MinimalProfileFields
     }
+    reaction(request: $reactionRequest)
     collectedBy {
       address
       defaultProfile {
@@ -32,6 +33,7 @@ export const CommentFields = gql`
         profile {
           ...MinimalProfileFields
         }
+        reaction(request: $reactionRequest)
         collectedBy {
           address
           defaultProfile {
@@ -47,6 +49,7 @@ export const CommentFields = gql`
         metadata {
           ...MetadataFields
         }
+        hidden
         createdAt
       }
       ... on Comment {
@@ -54,6 +57,7 @@ export const CommentFields = gql`
         profile {
           ...MinimalProfileFields
         }
+        reaction(request: $reactionRequest)
         collectedBy {
           address
           defaultProfile {
@@ -75,6 +79,7 @@ export const CommentFields = gql`
             profile {
               ...MinimalProfileFields
             }
+            reaction(request: $reactionRequest)
             collectedBy {
               address
               defaultProfile {
@@ -90,6 +95,7 @@ export const CommentFields = gql`
             metadata {
               ...MetadataFields
             }
+            hidden
             createdAt
           }
           ... on Mirror {
@@ -97,6 +103,7 @@ export const CommentFields = gql`
             profile {
               ...MinimalProfileFields
             }
+            reaction(request: $reactionRequest)
             collectModule {
               ...MinimalCollectModuleFields
             }
@@ -109,30 +116,37 @@ export const CommentFields = gql`
             mirrorOf {
               ... on Post {
                 id
+                reaction(request: $reactionRequest)
                 profile {
                   ...MinimalProfileFields
                 }
                 stats {
                   ...StatsFields
                 }
+                hidden
               }
               ... on Comment {
                 id
+                reaction(request: $reactionRequest)
                 profile {
                   ...MinimalProfileFields
                 }
+                reaction(request: $reactionRequest)
                 stats {
                   ...StatsFields
                 }
+                hidden
               }
             }
             createdAt
           }
         }
+        hidden
         createdAt
       }
       ... on Mirror {
         id
+        reaction(request: $reactionRequest)
         profile {
           ...MinimalProfileFields
         }
@@ -145,26 +159,32 @@ export const CommentFields = gql`
             profile {
               ...MinimalProfileFields
             }
+            reaction(request: $reactionRequest)
             stats {
               ...StatsFields
             }
+            hidden
           }
           ... on Comment {
             id
             profile {
               ...MinimalProfileFields
             }
+            reaction(request: $reactionRequest)
             stats {
               ...StatsFields
             }
+            hidden
           }
         }
         stats {
           ...StatsFields
         }
+        hidden
         createdAt
       }
     }
+    hidden
     createdAt
     appId
   }

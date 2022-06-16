@@ -235,10 +235,18 @@ const NewPost: FC<Props> = ({ setShowModal, hideCard = false }) => {
         metadata_id: generateSnowflake(),
         description: trimify(postContent),
         content: trimify(postContent),
-        external_url: null,
+        external_url: `https://bcharity.vercel.app/u/${currentUser?.handle}`,
         image: attachments.length > 0 ? attachments[0]?.item : null,
         imageMimeType: attachments.length > 0 ? attachments[0]?.type : null,
         name: `Post by @${currentUser?.handle}`,
+        mainContentFocus:
+          attachments.length > 0
+            ? attachments[0]?.type === 'video/mp4'
+              ? 'VIDEO'
+              : 'IMAGE'
+            : 'TEXT',
+        contentWarning: null, // TODO
+
         attributes: [
           {
             traitType: 'string',
@@ -247,6 +255,7 @@ const NewPost: FC<Props> = ({ setShowModal, hideCard = false }) => {
           }
         ],
         media: attachments,
+        createdOn: new Date(),
         appId: 'BCharity'
       }).finally(() => setIsUploading(false))
 
@@ -272,7 +281,8 @@ const NewPost: FC<Props> = ({ setShowModal, hideCard = false }) => {
   const setGifAttachment = (gif: IGif) => {
     const attachment = {
       item: gif.images.original.url,
-      type: 'image/gif'
+      type: 'image/gif',
+      altTag: ''
     }
     setAttachments([...attachments, attachment])
   }

@@ -282,7 +282,8 @@ const NewComment: FC<Props> = ({ post, type }) => {
   const setGifAttachment = (gif: IGif) => {
     const attachment = {
       item: gif.images.original.url,
-      type: 'image/gif'
+      type: 'image/gif',
+      altTag: ''
     }
     setAttachments([...attachments, attachment])
   }

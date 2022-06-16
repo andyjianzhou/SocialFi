@@ -33,6 +33,7 @@ export const POST_QUERY = gql`
   query Post(
     $request: PublicationQueryRequest!
     $followRequest: DoesFollowRequest!
+    $reactionRequest: ReactionFieldResolverRequest
   ) {
     publication(request: $request) {
       ... on Post {

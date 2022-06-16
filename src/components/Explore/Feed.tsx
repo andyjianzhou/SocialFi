@@ -16,7 +16,10 @@ import React, { FC, useState } from 'react'
 import { useInView } from 'react-cool-inview'
 
 const EXPLORE_FEED_QUERY = gql`
-  query ExploreFeed($request: ExplorePublicationRequest!) {
+  query ExploreFeed(
+    $request: ExplorePublicationRequest!
+    $reactionRequest: ReactionFieldResolverRequest
+  ) {
     explorePublications(request: $request) {
       items {
         ... on Post {

@@ -27,7 +27,7 @@ export type BCharityCollectModule = FreeCollectModuleSettings &
 export type BCharityFollowModule = FeeFollowModuleSettings &
   ProfileFollowModuleSettings &
   RevertFollowModuleSettings
-export type BCharityAttachment = { item: string; type: string }
+export type BCharityAttachment = { item: string; type: string; altTag: string }
 export type UserSuggestion = {
   uid: string
   id: string

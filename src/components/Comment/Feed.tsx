@@ -19,7 +19,10 @@ import ReferenceAlert from '../Shared/ReferenceAlert'
 import NewComment from './NewComment'
 
 const COMMENT_FEED_QUERY = gql`
-  query CommentFeed($request: PublicationsQueryRequest!) {
+  query CommentFeed(
+    $request: PublicationsQueryRequest!
+    $reactionRequest: ReactionFieldResolverRequest
+  ) {
     publications(request: $request) {
       items {
         ... on Comment {
