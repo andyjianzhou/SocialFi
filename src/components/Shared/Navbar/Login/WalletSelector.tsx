@@ -3,16 +3,16 @@ import SwitchNetwork from '@components/Shared/SwitchNetwork'
 import { CURRENT_USER_QUERY } from '@components/SiteLayout'
 import { Button } from '@components/UI/Button'
 import { Spinner } from '@components/UI/Spinner'
-import AppContext from '@components/utils/AppContext'
+import { Profile } from '@generated/types'
 import { XCircleIcon } from '@heroicons/react/solid'
 import consoleLog from '@lib/consoleLog'
 import getWalletLogo from '@lib/getWalletLogo'
-import trackEvent from '@lib/trackEvent'
 import clsx from 'clsx'
 import Cookies from 'js-cookie'
-import React, { Dispatch, FC, useContext, useEffect, useState } from 'react'
+import React, { Dispatch, FC, useEffect, useState } from 'react'
 import { COOKIE_CONFIG } from 'src/apollo'
 import { CHAIN_ID, ERROR_MESSAGE } from 'src/constants'
+import { useAppStore, usePersistStore } from 'src/store'
 import {
   Connector,
   useAccount,
@@ -77,10 +77,10 @@ const WalletSelector: FC<Props> = ({ setHasConnected, setHasProfile }) => {
 
   const { connectors, error, connectAsync } = useConnect()
   const { data: accountData } = useAccount()
-  const { setSelectedProfile } = useContext(AppContext)
+  const { setProfiles } = useAppStore()
+  const { setIsAuthenticated, setCurrentUser } = usePersistStore()
 
   const onConnect = async (x: Connector) => {
-    trackEvent(`connect with ${x.name.toLowerCase()}`)
     await connectAsync(x).then(({ account }) => {
       if (account) {
         setHasConnected(true)
@@ -89,7 +89,6 @@ const WalletSelector: FC<Props> = ({ setHasConnected, setHasProfile }) => {
   }
 
   const handleSign = () => {
-    trackEvent('sign in with lens')
     loadChallenge({
       variables: { request: { address: accountData?.address } }
     }).then((res) => {
@@ -112,12 +111,21 @@ const WalletSelector: FC<Props> = ({ setHasConnected, setHasProfile }) => {
             )
             getProfiles({
               variables: { ownedBy: accountData?.address }
-            }).then((res) => {
-              localStorage.setItem('selectedProfile', '0')
-              if (res.data.profiles.items.length === 0) {
+            }).then(({ data }) => {
+              if (data?.profiles?.items?.length === 0) {
                 setHasProfile(false)
               } else {
-                setSelectedProfile(0)
+                const profiles: Profile[] = data?.profiles?.items
+                  ?.slice()
+                  ?.sort(
+                    (a: Profile, b: Profile) => Number(a.id) - Number(b.id)
+                  )
+                  ?.sort((a: Profile, b: Profile) =>
+                    !(a.isDefault !== b.isDefault) ? 0 : a.isDefault ? -1 : 1
+                  )
+                setIsAuthenticated(true)
+                setProfiles(profiles)
+                setCurrentUser(profiles[0])
               }
             })
           })

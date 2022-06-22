@@ -1,3 +1,4 @@
+import getAnkrURL from '@lib/getAnkrURL'
 import { chain } from 'wagmi'
 
 // Environments
@@ -5,9 +6,9 @@ export const IS_PRODUCTION = process.env.NODE_ENV === 'production'
 export const IS_DEVELOPMENT = process.env.NODE_ENV === 'development'
 export const IS_MAINNET = process.env.NEXT_PUBLIC_IS_MAINNET === 'true'
 
-export const TITLE = 'BCharity'
+export const APP_NAME = 'BCharity'
 export const DESCRIPTION =
-  'Next generation community-driven composable, decentralized, and permissionless public good Web3 built on blockchain.'
+  'Next generation group-driven composable, decentralized, and permissionless public good Web3 built on blockchain.'
 export const DEFAULT_OG = 'https://assets.lenster.xyz/images/og/logo.jpeg'
 
 // Git
@@ -48,19 +49,15 @@ export const IMAGEKIT_URL_DEV = 'https://ik.imagekit.io/lensterdev/'
 export const IMAGEKIT_URL = IS_PRODUCTION ? IMAGEKIT_URL_PROD : IMAGEKIT_URL_DEV
 
 // Web3
-export const ALCHEMY_KEY = process.env.NEXT_PUBLIC_ALCHEMY_KEY
-export const ALCHEMY_RPC = IS_MAINNET
-  ? `https://polygon-mainnet.g.alchemy.com/v2/${ALCHEMY_KEY}`
-  : `https://polygon-mumbai.g.alchemy.com/v2/${ALCHEMY_KEY}`
 export const POLYGON_MAINNET = {
   ...chain.polygon,
   name: 'Polygon Mainnet',
-  rpcUrls: { default: 'https://polygon-rpc.com' }
+  rpcUrls: { default: getAnkrURL(chain.polygon.id) }
 }
 export const POLYGON_MUMBAI = {
   ...chain.polygonMumbai,
   name: 'Polygon Mumbai',
-  rpcUrls: { default: 'https://rpc-mumbai.maticvigil.com' }
+  rpcUrls: { default: getAnkrURL(chain.polygonMumbai.id) }
 }
 export const CHAIN_ID = IS_MAINNET ? POLYGON_MAINNET.id : POLYGON_MUMBAI.id
 

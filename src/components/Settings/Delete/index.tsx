@@ -5,36 +5,33 @@ import UserProfile from '@components/Shared/UserProfile'
 import { Button } from '@components/UI/Button'
 import { Card, CardBody } from '@components/UI/Card'
 import { Spinner } from '@components/UI/Spinner'
-import AppContext from '@components/utils/AppContext'
 import SEO from '@components/utils/SEO'
 import { CreateBurnProfileBroadcastItemResult } from '@generated/types'
 import { TrashIcon } from '@heroicons/react/outline'
 import consoleLog from '@lib/consoleLog'
 import omit from '@lib/omit'
 import splitSignature from '@lib/splitSignature'
-import trackEvent from '@lib/trackEvent'
-import React, { FC, useContext } from 'react'
+import Cookies from 'js-cookie'
+import React, { FC } from 'react'
 import toast from 'react-hot-toast'
 import {
-  CHAIN_ID,
+  APP_NAME,
   CONNECT_WALLET,
   ERROR_MESSAGE,
-  LENSHUB_PROXY,
-  WRONG_NETWORK
+  LENSHUB_PROXY
 } from 'src/constants'
 import Custom404 from 'src/pages/404'
-import {
-  useAccount,
-  useContractWrite,
-  useNetwork,
-  useSignTypedData
-} from 'wagmi'
+import { useAppStore, usePersistStore } from 'src/store'
+import { useContractWrite, useDisconnect, useSignTypedData } from 'wagmi'
 
 import Sidebar from '../Sidebar'
 
 const CREATE_BURN_PROFILE_TYPED_DATA_MUTATION = gql`
-  mutation CreateBurnProfileTypedData($request: BurnProfileRequest!) {
-    createBurnProfileTypedData(request: $request) {
+  mutation CreateBurnProfileTypedData(
+    $options: TypedDataOptions
+    $request: BurnProfileRequest!
+  ) {
+    createBurnProfileTypedData(options: $options, request: $request) {
       id
       expiresAt
       typedData {
@@ -61,9 +58,10 @@ const CREATE_BURN_PROFILE_TYPED_DATA_MUTATION = gql`
 `
 
 const DeleteSettings: FC = () => {
-  const { currentUser } = useContext(AppContext)
-  const { activeChain } = useNetwork()
-  const { data: account } = useAccount()
+  const { userSigNonce, setUserSigNonce } = useAppStore()
+  const { isAuthenticated, setIsAuthenticated, currentUser, setCurrentUser } =
+    usePersistStore()
+  const { disconnect } = useDisconnect()
   const { isLoading: signLoading, signTypedDataAsync } = useSignTypedData({
     onError(error) {
       toast.error(error?.message)
@@ -71,8 +69,12 @@ const DeleteSettings: FC = () => {
   })
 
   const onCompleted = () => {
-    trackEvent('delete profile')
-    localStorage.setItem('selectedProfile', '0')
+    setIsAuthenticated(false)
+    setCurrentUser(undefined)
+    Cookies.remove('accessToken')
+    Cookies.remove('refreshToken')
+    localStorage.removeItem('lenster.store')
+    disconnect()
     location.href = '/'
   }
 
@@ -110,6 +112,7 @@ const DeleteSettings: FC = () => {
           types: omit(typedData?.types, '__typename'),
           value: omit(typedData?.value, '__typename')
         }).then((signature) => {
+          setUserSigNonce(userSigNonce + 1)
           const { tokenId } = typedData?.value
           const { v, r, s } = splitSignature(signature)
           const sig = {
@@ -128,22 +131,21 @@ const DeleteSettings: FC = () => {
     })
 
   const handleDelete = () => {
-    if (!account?.address) {
-      toast.error(CONNECT_WALLET)
-    } else if (activeChain?.id !== CHAIN_ID) {
-      toast.error(WRONG_NETWORK)
-    } else {
-      createBurnProfileTypedData({
-        variables: { request: { profileId: currentUser?.id } }
-      })
-    }
+    if (!isAuthenticated) return toast.error(CONNECT_WALLET)
+
+    createBurnProfileTypedData({
+      variables: {
+        options: { overrideSigNonce: userSigNonce },
+        request: { profileId: currentUser?.id }
+      }
+    })
   }
 
   if (!currentUser) return <Custom404 />
 
   return (
     <GridLayout>
-      <SEO title="Delete Profile • BCharity" />
+      <SEO title={`Delete Profile • ${APP_NAME}`} />
       <GridItemFour>
         <Sidebar />
       </GridItemFour>
@@ -161,8 +163,8 @@ const DeleteSettings: FC = () => {
             <div className="text-lg font-bold">What else you should know</div>
             <div className="text-sm text-gray-500 divide-y dark:divide-gray-700">
               <p className="pb-3">
-                You cannot restore your BCharity account if it was accidentally
-                or wrongfully deleted.
+                You cannot restore your {APP_NAME} account if it was
+                accidentally or wrongfully deleted.
               </p>
               <p className="py-3">
                 Some account information may still be available in search

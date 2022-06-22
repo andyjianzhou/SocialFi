@@ -14,6 +14,7 @@ import { CollectionIcon } from '@heroicons/react/outline'
 import consoleLog from '@lib/consoleLog'
 import React, { FC, useState } from 'react'
 import { useInView } from 'react-cool-inview'
+import { usePersistStore } from 'src/store'
 
 const EXPLORE_FEED_QUERY = gql`
   query ExploreFeed(
@@ -48,6 +49,7 @@ interface Props {
 }
 
 const Feed: FC<Props> = ({ feedType = 'TOP_COMMENTED' }) => {
+  const { currentUser } = usePersistStore()
   const [publications, setPublications] = useState<BCharityPost[]>([])
   const [pageInfo, setPageInfo] = useState<PaginatedResultInfo>()
   const { data, loading, error, fetchMore } = useQuery(EXPLORE_FEED_QUERY, {
@@ -56,7 +58,8 @@ const Feed: FC<Props> = ({ feedType = 'TOP_COMMENTED' }) => {
         sortCriteria: feedType,
         limit: 10,
         noRandomize: feedType === 'LATEST'
-      }
+      },
+      reactionRequest: currentUser ? { profileId: currentUser?.id } : null
     },
     onCompleted(data) {
       setPageInfo(data?.explorePublications?.pageInfo)
@@ -78,7 +81,8 @@ const Feed: FC<Props> = ({ feedType = 'TOP_COMMENTED' }) => {
             cursor: pageInfo?.next,
             limit: 10,
             noRandomize: feedType === 'LATEST'
-          }
+          },
+          reactionRequest: currentUser ? { profileId: currentUser?.id } : null
         }
       }).then(({ data }: any) => {
         setPageInfo(data?.explorePublications?.pageInfo)

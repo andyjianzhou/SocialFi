@@ -8,8 +8,8 @@ const generateMeta = (
     <head>
       <title>${title}</title>
       <meta name="description" content="${description}" />
-    
-      <meta property="og:url" content="https://bcharity.xyz" />
+      <meta charset="UTF-8" />
+      <meta property="og:url" content="http://www.bcharity.net" />
       <meta property="og:site_name" content="BCharity" />
       <meta property="og:title" content="${title}" />
       <meta property="og:description" content="${description}" />

@@ -1,5 +1,4 @@
 import { Card, CardBody } from '@components/UI/Card'
-import AppContext from '@components/utils/AppContext'
 import {
   MinusCircleIcon,
   PencilAltIcon,
@@ -8,7 +7,9 @@ import {
 import { CheckCircleIcon } from '@heroicons/react/solid'
 import clsx from 'clsx'
 import Link from 'next/link'
-import { FC, useContext } from 'react'
+import { FC } from 'react'
+import { APP_NAME } from 'src/constants'
+import { useAppStore, usePersistStore } from 'src/store'
 
 interface StatusProps {
   finished: boolean
@@ -29,7 +30,8 @@ const Status: FC<StatusProps> = ({ finished, title }) => (
 )
 
 const SetProfile: FC = () => {
-  const { currentUser, profiles } = useContext(AppContext)
+  const { profiles } = useAppStore()
+  const { currentUser } = usePersistStore()
   const hasDefaultProfile = !!profiles.find((o) => o.isDefault)
   const doneSetup =
     !!currentUser?.name && !!currentUser?.bio && !!currentUser?.picture
@@ -41,7 +43,7 @@ const SetProfile: FC = () => {
       <CardBody className="space-y-4 text-green-600">
         <div className="flex items-center space-x-2 font-bold">
           <PhotographIcon className="w-5 h-5" />
-          <p>Setup your BCharity profile</p>
+          <p>Setup your {APP_NAME} profile</p>
         </div>
         <div className="space-y-1 text-sm leading-[22px]">
           <Status finished={!!currentUser?.name} title="Set profile name" />

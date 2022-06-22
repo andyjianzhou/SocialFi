@@ -3,13 +3,11 @@ import { gql, useMutation } from '@apollo/client'
 import Attachments from '@components/Shared/Attachments'
 import Markup from '@components/Shared/Markup'
 import PubIndexStatus from '@components/Shared/PubIndexStatus'
-import SwitchNetwork from '@components/Shared/SwitchNetwork'
 import { Button } from '@components/UI/Button'
 import { Card } from '@components/UI/Card'
 import { ErrorMessage } from '@components/UI/ErrorMessage'
 import { MentionTextArea } from '@components/UI/MentionTextArea'
 import { Spinner } from '@components/UI/Spinner'
-import AppContext from '@components/utils/AppContext'
 import { BCharityAttachment } from '@generated/bcharitytypes'
 import { CreatePostBroadcastItemResult, EnabledModule } from '@generated/types'
 import { IGif } from '@giphy/js-types'
@@ -25,26 +23,21 @@ import {
 } from '@lib/getModule'
 import omit from '@lib/omit'
 import splitSignature from '@lib/splitSignature'
-import trackEvent from '@lib/trackEvent'
 import trimify from '@lib/trimify'
 import uploadToIPFS from '@lib/uploadToIPFS'
 import dynamic from 'next/dynamic'
-import { Dispatch, FC, useContext, useState } from 'react'
+import { Dispatch, FC, useState } from 'react'
 import toast from 'react-hot-toast'
 import {
-  CHAIN_ID,
+  APP_NAME,
   CONNECT_WALLET,
   ERROR_MESSAGE,
+  ERRORS,
   LENSHUB_PROXY,
-  RELAY_ON,
-  WRONG_NETWORK
+  RELAY_ON
 } from 'src/constants'
-import {
-  useAccount,
-  useContractWrite,
-  useNetwork,
-  useSignTypedData
-} from 'wagmi'
+import { useAppStore, usePersistStore } from 'src/store'
+import { useContractWrite, useSignTypedData } from 'wagmi'
 
 const Attachment = dynamic(() => import('../../Shared/Attachment'), {
   loading: () => <div className="mb-1 w-5 h-5 rounded-lg shimmer" />
@@ -69,8 +62,11 @@ const Preview = dynamic(() => import('../../Shared/Preview'), {
 })
 
 export const CREATE_POST_TYPED_DATA_MUTATION = gql`
-  mutation CreatePostTypedData($request: CreatePublicPostRequest!) {
-    createPostTypedData(request: $request) {
+  mutation CreatePostTypedData(
+    $options: TypedDataOptions
+    $request: CreatePublicPostRequest!
+  ) {
+    createPostTypedData(options: $options, request: $request) {
       id
       expiresAt
       typedData {
@@ -107,6 +103,8 @@ interface Props {
 }
 
 const NewPost: FC<Props> = ({ setShowModal, hideCard = false }) => {
+  const { userSigNonce, setUserSigNonce } = useAppStore()
+  const { isAuthenticated, currentUser } = usePersistStore()
   const [preview, setPreview] = useState<boolean>(false)
   const [postContent, setPostContent] = useState<string>('')
   const [postContentError, setPostContentError] = useState<string>('')
@@ -116,9 +114,6 @@ const NewPost: FC<Props> = ({ setShowModal, hideCard = false }) => {
   const [feeData, setFeeData] = useState<FEE_DATA_TYPE>(defaultFeeData)
   const [isUploading, setIsUploading] = useState<boolean>(false)
   const [attachments, setAttachments] = useState<BCharityAttachment[]>([])
-  const { currentUser } = useContext(AppContext)
-  const { activeChain } = useNetwork()
-  const { data: account } = useAccount()
   const { isLoading: signLoading, signTypedDataAsync } = useSignTypedData({
     onError(error) {
       toast.error(error?.message)
@@ -131,7 +126,6 @@ const NewPost: FC<Props> = ({ setShowModal, hideCard = false }) => {
     setAttachments([])
     setSelectedModule(defaultModuleData)
     setFeeData(defaultFeeData)
-    trackEvent('new post', 'create')
   }
   const {
     data,
@@ -156,12 +150,15 @@ const NewPost: FC<Props> = ({ setShowModal, hideCard = false }) => {
 
   const [broadcast, { data: broadcastData, loading: broadcastLoading }] =
     useMutation(BROADCAST_MUTATION, {
-      onCompleted({ broadcast }) {
-        if (broadcast?.reason !== 'NOT_ALLOWED') {
+      onCompleted(data) {
+        if (data?.broadcast?.reason !== 'NOT_ALLOWED') {
           onCompleted()
         }
       },
       onError(error) {
+        if (error.message === ERRORS.notMined) {
+          toast.error(error.message)
+        }
         consoleLog('Relay Error', '#ef4444', error.message)
       }
     })
@@ -189,6 +186,7 @@ const NewPost: FC<Props> = ({ setShowModal, hideCard = false }) => {
           types: omit(typedData?.types, '__typename'),
           value: omit(typedData?.value, '__typename')
         }).then((signature) => {
+          setUserSigNonce(userSigNonce + 1)
           const { v, r, s } = splitSignature(signature)
           const sig = { v, r, s, deadline: typedData.value.deadline }
           const inputStruct = {
@@ -202,8 +200,8 @@ const NewPost: FC<Props> = ({ setShowModal, hideCard = false }) => {
           }
           if (RELAY_ON) {
             broadcast({ variables: { request: { id, signature } } }).then(
-              ({ data: { broadcast }, errors }) => {
-                if (errors || broadcast?.reason === 'NOT_ALLOWED') {
+              ({ data, errors }) => {
+                if (errors || data?.broadcast?.reason === 'NOT_ALLOWED') {
                   write({ args: inputStruct })
                 }
               }
@@ -220,62 +218,59 @@ const NewPost: FC<Props> = ({ setShowModal, hideCard = false }) => {
   )
 
   const createPost = async () => {
-    if (!account?.address) {
-      toast.error(CONNECT_WALLET)
-    } else if (activeChain?.id !== CHAIN_ID) {
-      toast.error(WRONG_NETWORK)
-    } else if (postContent.length === 0 && attachments.length === 0) {
-      setPostContentError('Post should not be empty!')
-    } else {
-      setPostContentError('')
-      setIsUploading(true)
-      // TODO: Add animated_url support
-      const { path } = await uploadToIPFS({
-        version: '1.0.0',
-        metadata_id: generateSnowflake(),
-        description: trimify(postContent),
-        content: trimify(postContent),
-        external_url: `https://bcharity.vercel.app/u/${currentUser?.handle}`,
-        image: attachments.length > 0 ? attachments[0]?.item : null,
-        imageMimeType: attachments.length > 0 ? attachments[0]?.type : null,
-        name: `Post by @${currentUser?.handle}`,
-        mainContentFocus:
-          attachments.length > 0
-            ? attachments[0]?.type === 'video/mp4'
-              ? 'VIDEO'
-              : 'IMAGE'
-            : 'TEXT',
-        contentWarning: null, // TODO
+    if (!isAuthenticated) return toast.error(CONNECT_WALLET)
+    if (postContent.length === 0 && attachments.length === 0) {
+      return setPostContentError('Post should not be empty!')
+    }
 
-        attributes: [
-          {
-            traitType: 'string',
-            key: 'type',
-            value: 'post'
-          }
-        ],
-        media: attachments,
-        createdOn: new Date(),
-        appId: 'BCharity'
-      }).finally(() => setIsUploading(false))
+    setPostContentError('')
+    setIsUploading(true)
+    // TODO: Add animated_url support
+    const { path } = await uploadToIPFS({
+      version: '1.0.0',
+      metadata_id: generateSnowflake(),
+      description: trimify(postContent),
+      content: trimify(postContent),
+      external_url: `https://lenster.xyz/u/${currentUser?.handle}`,
+      image: attachments.length > 0 ? attachments[0]?.item : null,
+      imageMimeType: attachments.length > 0 ? attachments[0]?.type : null,
+      name: `Post by @${currentUser?.handle}`,
+      mainContentFocus:
+        attachments.length > 0
+          ? attachments[0]?.type === 'video/mp4'
+            ? 'VIDEO'
+            : 'IMAGE'
+          : 'TEXT',
+      contentWarning: null, // TODO
+      attributes: [
+        {
+          traitType: 'string',
+          key: 'type',
+          value: 'post'
+        }
+      ],
+      media: attachments,
+      createdOn: new Date(),
+      appId: APP_NAME
+    }).finally(() => setIsUploading(false))
 
-      createPostTypedData({
-        variables: {
-          request: {
-            profileId: currentUser?.id,
-            contentURI: `https://ipfs.infura.io/ipfs/${path}`,
-            collectModule: feeData.recipient
-              ? {
-                  [getModule(selectedModule.moduleName).config]: feeData
-                }
-              : getModule(selectedModule.moduleName).config,
-            referenceModule: {
-              followerOnlyReferenceModule: onlyFollowers ? true : false
-            }
+    createPostTypedData({
+      variables: {
+        options: { overrideSigNonce: userSigNonce },
+        request: {
+          profileId: currentUser?.id,
+          contentURI: `https://ipfs.infura.io/ipfs/${path}`,
+          collectModule: feeData.recipient
+            ? {
+                [getModule(selectedModule.moduleName).config]: feeData
+              }
+            : getModule(selectedModule.moduleName).config,
+          referenceModule: {
+            followerOnlyReferenceModule: onlyFollowers ? true : false
           }
         }
-      })
-    }
+      }
+    })
   }
 
   const setGifAttachment = (gif: IGif) => {
@@ -342,42 +337,38 @@ const NewPost: FC<Props> = ({ setShowModal, hideCard = false }) => {
                   }
                 />
               ) : null}
-              {activeChain?.id !== CHAIN_ID ? (
-                <SwitchNetwork className="ml-auto" />
-              ) : (
-                <Button
-                  className="ml-auto"
-                  disabled={
-                    isUploading ||
-                    typedDataLoading ||
-                    signLoading ||
-                    writeLoading ||
-                    broadcastLoading
-                  }
-                  icon={
-                    isUploading ||
-                    typedDataLoading ||
-                    signLoading ||
-                    writeLoading ||
-                    broadcastLoading ? (
-                      <Spinner size="xs" />
-                    ) : (
-                      <PencilAltIcon className="w-4 h-4" />
-                    )
-                  }
-                  onClick={createPost}
-                >
-                  {isUploading
-                    ? 'Uploading to IPFS'
-                    : typedDataLoading
-                    ? 'Generating Post'
-                    : signLoading
-                    ? 'Sign'
-                    : writeLoading || broadcastLoading
-                    ? 'Send'
-                    : 'Post'}
-                </Button>
-              )}
+              <Button
+                className="ml-auto"
+                disabled={
+                  isUploading ||
+                  typedDataLoading ||
+                  signLoading ||
+                  writeLoading ||
+                  broadcastLoading
+                }
+                icon={
+                  isUploading ||
+                  typedDataLoading ||
+                  signLoading ||
+                  writeLoading ||
+                  broadcastLoading ? (
+                    <Spinner size="xs" />
+                  ) : (
+                    <PencilAltIcon className="w-4 h-4" />
+                  )
+                }
+                onClick={createPost}
+              >
+                {isUploading
+                  ? 'Uploading to IPFS'
+                  : typedDataLoading
+                  ? 'Generating Post'
+                  : signLoading
+                  ? 'Sign'
+                  : writeLoading || broadcastLoading
+                  ? 'Send'
+                  : 'Post'}
+              </Button>
             </div>
           </div>
           <Attachments

@@ -10,7 +10,7 @@ const Hero: React.FC = () => {
               Welcome to BCharity Baas👋
             </div>
             <div className="leading-7 text-gray-700">
-              Next generation community-driven composable, decentralized, and
+              Next generation group-driven composable, decentralized, and
               permissionless public good industry Web3 built on blockchains.
             </div>
             <div className="text-2xl font-extrabold text-black sm:text-2xl">

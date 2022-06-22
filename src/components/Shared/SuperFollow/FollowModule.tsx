@@ -5,7 +5,6 @@ import AllowanceButton from '@components/Settings/Allowance/Button'
 import { Button } from '@components/UI/Button'
 import { Spinner } from '@components/UI/Spinner'
 import { WarningMessage } from '@components/UI/WarningMessage'
-import AppContext from '@components/utils/AppContext'
 import { BCharityFollowModule } from '@generated/bcharitytypes'
 import {
   CreateFollowBroadcastItemResult,
@@ -19,23 +18,21 @@ import formatAddress from '@lib/formatAddress'
 import getTokenImage from '@lib/getTokenImage'
 import omit from '@lib/omit'
 import splitSignature from '@lib/splitSignature'
-import trackEvent from '@lib/trackEvent'
-import { Dispatch, FC, useContext, useState } from 'react'
+import { Dispatch, FC, useState } from 'react'
 import toast from 'react-hot-toast'
 import {
-  CHAIN_ID,
   CONNECT_WALLET,
   ERROR_MESSAGE,
+  ERRORS,
   LENSHUB_PROXY,
   POLYGONSCAN_URL,
-  RELAY_ON,
-  WRONG_NETWORK
+  RELAY_ON
 } from 'src/constants'
+import { useAppStore, usePersistStore } from 'src/store'
 import {
   useAccount,
   useBalance,
   useContractWrite,
-  useNetwork,
   useSignTypedData
 } from 'wagmi'
 
@@ -44,22 +41,20 @@ import Slug from '../Slug'
 import Uniswap from '../Uniswap'
 
 const SUPER_FOLLOW_QUERY = gql`
-  query SuperFollow($request: ProfileQueryRequest!) {
-    profiles(request: $request) {
-      items {
-        id
-        followModule {
-          ... on FeeFollowModuleSettings {
-            amount {
-              asset {
-                name
-                symbol
-                address
-              }
-              value
+  query SuperFollow($request: SingleProfileQueryRequest!) {
+    profile(request: $request) {
+      id
+      followModule {
+        ... on FeeFollowModuleSettings {
+          amount {
+            asset {
+              name
+              symbol
+              address
             }
-            recipient
+            value
           }
+          recipient
         }
       }
     }
@@ -112,9 +107,9 @@ const FollowModule: FC<Props> = ({
   setFollowersCount,
   again
 }) => {
-  const { currentUser } = useContext(AppContext)
+  const { userSigNonce, setUserSigNonce } = useAppStore()
+  const { isAuthenticated, currentUser } = usePersistStore()
   const [allowed, setAllowed] = useState<boolean>(true)
-  const { activeChain } = useNetwork()
   const { data: account } = useAccount()
   const { isLoading: signLoading, signTypedDataAsync } = useSignTypedData({
     onError(error) {
@@ -129,7 +124,6 @@ const FollowModule: FC<Props> = ({
     setFollowing(true)
     setShowFollowModal(false)
     toast.success('Followed successfully!')
-    trackEvent('super follow user')
   }
 
   const { isLoading: writeLoading, write } = useContractWrite(
@@ -149,7 +143,7 @@ const FollowModule: FC<Props> = ({
   )
 
   const { data, loading } = useQuery(SUPER_FOLLOW_QUERY, {
-    variables: { request: { profileIds: profile?.id } },
+    variables: { request: { profileId: profile?.id } },
     skip: !profile?.id,
     onCompleted() {
       consoleLog(
@@ -160,8 +154,7 @@ const FollowModule: FC<Props> = ({
     }
   })
 
-  const followModule: FeeFollowModuleSettings =
-    data?.profiles?.items[0]?.followModule
+  const followModule: FeeFollowModuleSettings = data?.profile?.followModule
 
   const { data: allowanceData, loading: allowanceLoading } = useQuery(
     ALLOWANCE_SETTINGS_QUERY,
@@ -200,12 +193,15 @@ const FollowModule: FC<Props> = ({
   const [broadcast, { loading: broadcastLoading }] = useMutation(
     BROADCAST_MUTATION,
     {
-      onCompleted({ broadcast }) {
-        if (broadcast?.reason !== 'NOT_ALLOWED') {
+      onCompleted(data) {
+        if (data?.broadcast?.reason !== 'NOT_ALLOWED') {
           onCompleted()
         }
       },
       onError(error) {
+        if (error.message === ERRORS.notMined) {
+          toast.error(error.message)
+        }
         consoleLog('Relay Error', '#ef4444', error.message)
       }
     }
@@ -225,6 +221,7 @@ const FollowModule: FC<Props> = ({
           types: omit(typedData?.types, '__typename'),
           value: omit(typedData?.value, '__typename')
         }).then((signature) => {
+          setUserSigNonce(userSigNonce + 1)
           const { profileIds, datas: followData } = typedData?.value
           const { v, r, s } = splitSignature(signature)
           const sig = { v, r, s, deadline: typedData.value.deadline }
@@ -236,8 +233,8 @@ const FollowModule: FC<Props> = ({
           }
           if (RELAY_ON) {
             broadcast({ variables: { request: { id, signature } } }).then(
-              ({ data: { broadcast }, errors }) => {
-                if (errors || broadcast?.reason === 'NOT_ALLOWED') {
+              ({ data, errors }) => {
+                if (errors || data?.broadcast?.reason === 'NOT_ALLOWED') {
                   write({ args: inputStruct })
                 }
               }
@@ -254,29 +251,26 @@ const FollowModule: FC<Props> = ({
   )
 
   const createFollow = () => {
-    if (!account?.address) {
-      toast.error(CONNECT_WALLET)
-    } else if (activeChain?.id !== CHAIN_ID) {
-      toast.error(WRONG_NETWORK)
-    } else {
-      createFollowTypedData({
-        variables: {
-          request: {
-            follow: {
-              profile: profile?.id,
-              followModule: {
-                feeFollowModule: {
-                  amount: {
-                    currency: followModule?.amount?.asset?.address,
-                    value: followModule?.amount?.value
-                  }
+    if (!isAuthenticated) return toast.error(CONNECT_WALLET)
+
+    createFollowTypedData({
+      variables: {
+        options: { overrideSigNonce: userSigNonce },
+        request: {
+          follow: {
+            profile: profile?.id,
+            followModule: {
+              feeFollowModule: {
+                amount: {
+                  currency: followModule?.amount?.asset?.address,
+                  value: followModule?.amount?.value
                 }
               }
             }
           }
         }
-      })
-    }
+      }
+    })
   }
 
   if (loading) return <Loader message="Loading super follow" />

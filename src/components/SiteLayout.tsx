@@ -8,10 +8,12 @@ import Head from 'next/head'
 import { useTheme } from 'next-themes'
 import { FC, ReactNode, Suspense, useEffect, useState } from 'react'
 import { Toaster } from 'react-hot-toast'
-import { useAccount, useConnect, useDisconnect } from 'wagmi'
+import { CHAIN_ID } from 'src/constants'
+import { useAppStore, usePersistStore } from 'src/store'
+import { useAccount, useConnect, useDisconnect, useNetwork } from 'wagmi'
 
 import Loading from './Loading'
-import AppContext from './utils/AppContext'
+import useIsMounted from './utils/hooks/useIsMounted'
 
 const Navbar = dynamic(() => import('./Shared/Navbar'), { suspense: true })
 
@@ -36,18 +38,33 @@ interface Props {
 
 const SiteLayout: FC<Props> = ({ children }) => {
   const { resolvedTheme } = useTheme()
+  const { setProfiles, setUserSigNonce } = useAppStore()
+  const { isAuthenticated, setIsAuthenticated, currentUser, setCurrentUser } =
+    usePersistStore()
   const [pageLoading, setPageLoading] = useState<boolean>(true)
-  const [staffMode, setStaffMode] = useState<boolean>()
-  const [refreshToken, setRefreshToken] = useState<string>()
-  const [selectedProfile, setSelectedProfile] = useState<number>(0)
-  const [userSigNonce, setUserSigNonce] = useState<number>(0)
-  const { data: accountData } = useAccount()
+  const { data: account } = useAccount()
   const { activeConnector } = useConnect()
+  const { activeChain } = useNetwork()
   const { disconnect } = useDisconnect()
-  const { data, loading, error } = useQuery(CURRENT_USER_QUERY, {
-    variables: { ownedBy: accountData?.address },
-    skip: !selectedProfile || !refreshToken,
+  const { mounted } = useIsMounted()
+  const { loading } = useQuery(CURRENT_USER_QUERY, {
+    variables: { ownedBy: account?.address },
+    skip: !isAuthenticated,
     onCompleted(data) {
+      const profiles: Profile[] = data?.profiles?.items
+        ?.slice()
+        ?.sort((a: Profile, b: Profile) => Number(a.id) - Number(b.id))
+        ?.sort((a: Profile, b: Profile) =>
+          !(a.isDefault !== b.isDefault) ? 0 : a.isDefault ? -1 : 1
+        )
+
+      if (profiles.length === 0) {
+        setCurrentUser(undefined)
+      } else {
+        setProfiles(profiles)
+        setUserSigNonce(data?.userSigNonces?.lensHubOnChainSigNonce)
+      }
+
       consoleLog(
         'Query',
         '#8b5cf6',
@@ -55,49 +72,43 @@ const SiteLayout: FC<Props> = ({ children }) => {
       )
     }
   })
-  const profiles: Profile[] = data?.profiles?.items
-    ?.slice()
-    ?.sort((a: Profile, b: Profile) => Number(a.id) - Number(b.id))
-    ?.sort((a: Profile, b: Profile) =>
-      !(a.isDefault !== b.isDefault) ? 0 : a.isDefault ? -1 : 1
-    )
 
   useEffect(() => {
-    setRefreshToken(Cookies.get('refreshToken'))
-    setSelectedProfile(localStorage.selectedProfile)
-    setUserSigNonce(data?.userSigNonces?.lensHubOnChainSigNonce)
-    setStaffMode(localStorage.staffMode === 'true')
-    setPageLoading(false)
+    const accessToken = Cookies.get('accessToken')
+    const refreshToken = Cookies.get('refreshToken')
 
-    if (!activeConnector) {
+    const logout = () => {
+      setIsAuthenticated(false)
+      setCurrentUser(undefined)
+      Cookies.remove('accessToken')
+      Cookies.remove('refreshToken')
+      localStorage.removeItem('lenster.store')
       disconnect()
     }
 
-    activeConnector?.on('change', () => {
-      localStorage.removeItem('selectedProfile')
-      Cookies.remove('accessToken')
-      Cookies.remove('refreshToken')
-      disconnect()
-    })
-  }, [
-    selectedProfile,
-    activeConnector,
-    disconnect,
-    data?.userSigNonces?.lensHubOnChainSigNonce
-  ])
+    setPageLoading(false)
 
-  const injectedGlobalContext = {
-    selectedProfile,
-    setSelectedProfile,
-    userSigNonce,
-    setUserSigNonce,
-    staffMode,
-    setStaffMode,
-    profiles: profiles,
-    currentUser: profiles && profiles[selectedProfile],
-    currentUserLoading: loading,
-    currentUserError: error
-  }
+    if (
+      refreshToken &&
+      accessToken &&
+      accessToken !== 'undefined' &&
+      refreshToken !== 'undefined' &&
+      currentUser &&
+      activeChain?.id === CHAIN_ID
+    ) {
+      setIsAuthenticated(true)
+    } else {
+      if (isAuthenticated) logout()
+    }
+    if (!activeConnector?.id && mounted) {
+      disconnect()
+      setIsAuthenticated(false)
+    }
+    activeConnector?.on('change', () => {
+      logout()
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isAuthenticated, activeConnector, disconnect, setCurrentUser])
 
   const toastOptions = {
     style: {
@@ -124,7 +135,7 @@ const SiteLayout: FC<Props> = ({ children }) => {
   if (loading || pageLoading) return <Loading />
 
   return (
-    <AppContext.Provider value={injectedGlobalContext}>
+    <>
       <Head>
         <meta
           name="theme-color"
@@ -138,7 +149,7 @@ const SiteLayout: FC<Props> = ({ children }) => {
           {children}
         </div>
       </Suspense>
-    </AppContext.Provider>
+    </>
   )
 }
 

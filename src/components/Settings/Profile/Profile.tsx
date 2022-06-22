@@ -2,7 +2,6 @@ import { LensPeriphery } from '@abis/LensPeriphery'
 import { gql, useMutation } from '@apollo/client'
 import ChooseFile from '@components/Shared/ChooseFile'
 import IndexStatus from '@components/Shared/IndexStatus'
-import SwitchNetwork from '@components/Shared/SwitchNetwork'
 import { Button } from '@components/UI/Button'
 import { Card, CardBody } from '@components/UI/Card'
 import { ErrorMessage } from '@components/UI/ErrorMessage'
@@ -11,7 +10,6 @@ import { Input } from '@components/UI/Input'
 import { Spinner } from '@components/UI/Spinner'
 import { TextArea } from '@components/UI/TextArea'
 import { Toggle } from '@components/UI/Toggle'
-import AppContext from '@components/utils/AppContext'
 import {
   CreateSetProfileMetadataUriBroadcastItemResult,
   MediaSet,
@@ -27,25 +25,20 @@ import imagekitURL from '@lib/imagekitURL'
 import isBeta from '@lib/isBeta'
 import omit from '@lib/omit'
 import splitSignature from '@lib/splitSignature'
-import trackEvent from '@lib/trackEvent'
 import uploadAssetsToIPFS from '@lib/uploadAssetsToIPFS'
 import uploadToIPFS from '@lib/uploadToIPFS'
-import React, { ChangeEvent, FC, useContext, useEffect, useState } from 'react'
+import React, { ChangeEvent, FC, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import {
-  CHAIN_ID,
+  APP_NAME,
   CONNECT_WALLET,
   ERROR_MESSAGE,
+  ERRORS,
   LENS_PERIPHERY,
-  RELAY_ON,
-  WRONG_NETWORK
+  RELAY_ON
 } from 'src/constants'
-import {
-  useAccount,
-  useContractWrite,
-  useNetwork,
-  useSignTypedData
-} from 'wagmi'
+import { useAppStore, usePersistStore } from 'src/store'
+import { useContractWrite, useSignTypedData } from 'wagmi'
 import { object, optional, string } from 'zod'
 
 const CREATE_SET_PROFILE_METADATA_TYPED_DATA_MUTATION = gql`
@@ -102,14 +95,13 @@ interface Props {
 }
 
 const Profile: FC<Props> = ({ profile }) => {
+  const { userSigNonce, setUserSigNonce } = useAppStore()
+  const { isAuthenticated, currentUser } = usePersistStore()
   const [beta, setBeta] = useState<boolean>(isBeta(profile))
   const [pride, setPride] = useState<boolean>(hasPrideLogo(profile))
   const [cover, setCover] = useState<string>()
   const [isUploading, setIsUploading] = useState<boolean>(false)
   const [uploading, setUploading] = useState<boolean>(false)
-  const { currentUser } = useContext(AppContext)
-  const { activeChain } = useNetwork()
-  const { data: account } = useAccount()
   const { isLoading: signLoading, signTypedDataAsync } = useSignTypedData({
     onError(error) {
       toast.error(error?.message)
@@ -118,7 +110,6 @@ const Profile: FC<Props> = ({ profile }) => {
 
   const onCompleted = () => {
     toast.success('Profile updated successfully!')
-    trackEvent('update profile')
   }
 
   const {
@@ -144,12 +135,15 @@ const Profile: FC<Props> = ({ profile }) => {
 
   const [broadcast, { data: broadcastData, loading: broadcastLoading }] =
     useMutation(BROADCAST_MUTATION, {
-      onCompleted({ data }) {
+      onCompleted(data) {
         if (data?.broadcast?.reason !== 'NOT_ALLOWED') {
           onCompleted()
         }
       },
       onError(error) {
+        if (error.message === ERRORS.notMined) {
+          toast.error(error.message)
+        }
         consoleLog('Relay Error', '#ef4444', error.message)
       }
     })
@@ -171,6 +165,7 @@ const Profile: FC<Props> = ({ profile }) => {
           types: omit(typedData?.types, '__typename'),
           value: omit(typedData?.value, '__typename')
         }).then((signature) => {
+          setUserSigNonce(userSigNonce + 1)
           const { profileId, metadata } = typedData?.value
           const { v, r, s } = splitSignature(signature)
           const sig = { v, r, s, deadline: typedData.value.deadline }
@@ -237,62 +232,61 @@ const Profile: FC<Props> = ({ profile }) => {
     twitter: string | null,
     bio: string | null
   ) => {
-    if (!account?.address) {
-      toast.error(CONNECT_WALLET)
-    } else if (activeChain?.id !== CHAIN_ID) {
-      toast.error(WRONG_NETWORK)
-    } else {
-      setIsUploading(true)
-      const { path } = await uploadToIPFS({
-        name,
-        bio,
-        cover_picture: cover ? cover : null,
-        attributes: [
-          {
-            traitType: 'string',
-            key: 'location',
-            value: location
-          },
-          {
-            traitType: 'string',
-            key: 'website',
-            value: website
-          },
-          {
-            traitType: 'string',
-            key: 'twitter',
-            value: twitter
-          },
-          {
-            traitType: 'boolean',
-            key: 'isBeta',
-            value: beta
-          },
-          {
-            traitType: 'boolean',
-            key: 'hasPrideLogo',
-            value: pride
-          },
-          {
-            traitType: 'string',
-            key: 'app',
-            value: 'BCharity'
-          }
-        ],
-        version: '1.0.0',
-        metadata_id: generateSnowflake(),
-        appId: 'BCharity'
-      }).finally(() => setIsUploading(false))
+    if (!isAuthenticated) return toast.error(CONNECT_WALLET)
 
-      createSetProfileMetadataTypedData({
-        variables: {
-          request: {
-            profileId: currentUser?.id,
-            metadata: `https://ipfs.infura.io/ipfs/${path}`
-          }
+    setIsUploading(true)
+    const { path } = await uploadToIPFS({
+      name,
+      bio,
+      cover_picture: cover ? cover : null,
+      attributes: [
+        {
+          traitType: 'string',
+          key: 'location',
+          value: location
+        },
+        {
+          traitType: 'string',
+          key: 'website',
+          value: website
+        },
+        {
+          traitType: 'string',
+          key: 'twitter',
+          value: twitter
+        },
+        {
+          traitType: 'boolean',
+          key: 'isBeta',
+          value: beta
+        },
+        {
+          traitType: 'boolean',
+          key: 'hasPrideLogo',
+          value: pride
+        },
+        {
+          traitType: 'string',
+          key: 'app',
+          value: APP_NAME
         }
-      })
-    }
+      ],
+      version: '1.0.0',
+      metadata_id: generateSnowflake(),
+      previousMetadata: profile?.metadata,
+      createdOn: new Date(),
+      appId: APP_NAME
+    }).finally(() => setIsUploading(false))
+
+    createSetProfileMetadataTypedData({
+      variables: {
+        options: { overrideSigNonce: userSigNonce },
+        request: {
+          profileId: currentUser?.id,
+          metadata: `https://ipfs.infura.io/ipfs/${path}`
+        }
+      }
+    })
   }
 
   return (
@@ -373,8 +367,8 @@ const Profile: FC<Props> = ({ profile }) => {
           <div className="space-y-2">
             <div className="label">Beta</div>
             <div className="flex items-center space-x-2">
-              <Toggle name="beta" on={beta} setOn={setBeta} />
-              <div>Enroll to BCharity Beta</div>
+              <Toggle on={beta} setOn={setBeta} />
+              <div>Enroll to {APP_NAME} Beta</div>
             </div>
           </div>
           <div className="pt-4 space-y-2">
@@ -383,52 +377,48 @@ const Profile: FC<Props> = ({ profile }) => {
               <span>Celebrate pride every day</span>
             </div>
             <div className="flex items-center space-x-2">
-              <Toggle name="pride" on={pride} setOn={setPride} />
+              <Toggle on={pride} setOn={setPride} />
               <div>
-                Turn this on to show your pride and turn the BCharity logo
+                Turn this on to show your pride and turn the {APP_NAME} logo
                 rainbow every day.
               </div>
             </div>
           </div>
-          {activeChain?.id !== CHAIN_ID ? (
-            <SwitchNetwork className="ml-auto" />
-          ) : (
-            <div className="flex flex-col space-y-2">
-              <Button
-                className="ml-auto"
-                type="submit"
-                disabled={
-                  isUploading ||
-                  typedDataLoading ||
-                  signLoading ||
-                  writeLoading ||
-                  broadcastLoading
+          <div className="flex flex-col space-y-2">
+            <Button
+              className="ml-auto"
+              type="submit"
+              disabled={
+                isUploading ||
+                typedDataLoading ||
+                signLoading ||
+                writeLoading ||
+                broadcastLoading
+              }
+              icon={
+                isUploading ||
+                typedDataLoading ||
+                signLoading ||
+                writeLoading ||
+                broadcastLoading ? (
+                  <Spinner size="xs" />
+                ) : (
+                  <PencilIcon className="w-4 h-4" />
+                )
+              }
+            >
+              Save
+            </Button>
+            {writeData?.hash ?? broadcastData?.broadcast?.txHash ? (
+              <IndexStatus
+                txHash={
+                  writeData?.hash
+                    ? writeData?.hash
+                    : broadcastData?.broadcast?.txHash
                 }
-                icon={
-                  isUploading ||
-                  typedDataLoading ||
-                  signLoading ||
-                  writeLoading ||
-                  broadcastLoading ? (
-                    <Spinner size="xs" />
-                  ) : (
-                    <PencilIcon className="w-4 h-4" />
-                  )
-                }
-              >
-                Save
-              </Button>
-              {writeData?.hash ?? broadcastData?.broadcast?.txHash ? (
-                <IndexStatus
-                  txHash={
-                    writeData?.hash
-                      ? writeData?.hash
-                      : broadcastData?.broadcast?.txHash
-                  }
-                />
-              ) : null}
-            </div>
-          )}
+              />
+            ) : null}
+          </div>
         </Form>
       </CardBody>
     </Card>

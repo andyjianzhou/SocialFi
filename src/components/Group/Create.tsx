@@ -5,14 +5,12 @@ import { CREATE_POST_TYPED_DATA_MUTATION } from '@components/Post/NewPost'
 import ChooseFile from '@components/Shared/ChooseFile'
 import Pending from '@components/Shared/Pending'
 import SettingsHelper from '@components/Shared/SettingsHelper'
-import SwitchNetwork from '@components/Shared/SwitchNetwork'
 import { Button } from '@components/UI/Button'
 import { Card } from '@components/UI/Card'
 import { Form, useZodForm } from '@components/UI/Form'
 import { Input } from '@components/UI/Input'
 import { Spinner } from '@components/UI/Spinner'
 import { TextArea } from '@components/UI/TextArea'
-import AppContext from '@components/utils/AppContext'
 import SEO from '@components/utils/SEO'
 import { CreatePostBroadcastItemResult } from '@generated/types'
 import { BROADCAST_MUTATION } from '@gql/BroadcastMutation'
@@ -21,27 +19,22 @@ import consoleLog from '@lib/consoleLog'
 import generateSnowflake from '@lib/generateSnowflake'
 import omit from '@lib/omit'
 import splitSignature from '@lib/splitSignature'
-import trackEvent from '@lib/trackEvent'
 import uploadAssetsToIPFS from '@lib/uploadAssetsToIPFS'
 import uploadToIPFS from '@lib/uploadToIPFS'
 import { NextPage } from 'next'
-import React, { ChangeEvent, useContext, useState } from 'react'
+import React, { ChangeEvent, useState } from 'react'
 import toast from 'react-hot-toast'
 import {
-  CHAIN_ID,
+  APP_NAME,
   CONNECT_WALLET,
   ERROR_MESSAGE,
+  ERRORS,
   LENSHUB_PROXY,
-  RELAY_ON,
-  WRONG_NETWORK
+  RELAY_ON
 } from 'src/constants'
 import Custom404 from 'src/pages/404'
-import {
-  useAccount,
-  useContractWrite,
-  useNetwork,
-  useSignTypedData
-} from 'wagmi'
+import { useAppStore, usePersistStore } from 'src/store'
+import { useContractWrite, useSignTypedData } from 'wagmi'
 import { object, string } from 'zod'
 
 const newGroupSchema = object({
@@ -54,22 +47,17 @@ const newGroupSchema = object({
 })
 
 const Create: NextPage = () => {
+  const { userSigNonce, setUserSigNonce } = useAppStore()
+  const { isAuthenticated, currentUser } = usePersistStore()
   const [avatar, setAvatar] = useState<string>()
   const [avatarType, setAvatarType] = useState<string>()
   const [isUploading, setIsUploading] = useState<boolean>(false)
   const [uploading, setUploading] = useState<boolean>(false)
-  const { currentUser } = useContext(AppContext)
-  const { activeChain } = useNetwork()
-  const { data: account } = useAccount()
   const { isLoading: signLoading, signTypedDataAsync } = useSignTypedData({
     onError(error) {
       toast.error(error?.message)
     }
   })
-
-  const onCompleted = () => {
-    trackEvent('new group', 'create')
-  }
 
   const {
     data,
@@ -82,9 +70,6 @@ const Create: NextPage = () => {
     },
     'postWithSig',
     {
-      onSuccess() {
-        onCompleted()
-      },
       onError(error: any) {
         toast.error(error?.data?.message ?? error?.message)
       }
@@ -111,12 +96,10 @@ const Create: NextPage = () => {
 
   const [broadcast, { data: broadcastData, loading: broadcastLoading }] =
     useMutation(BROADCAST_MUTATION, {
-      onCompleted({ broadcast }) {
-        if (broadcast?.reason !== 'NOT_ALLOWED') {
-          onCompleted()
-        }
-      },
       onError(error) {
+        if (error.message === ERRORS.notMined) {
+          toast.error(error.message)
+        }
         consoleLog('Relay Error', '#ef4444', error.message)
       }
     })
@@ -144,6 +127,7 @@ const Create: NextPage = () => {
           types: omit(typedData?.types, '__typename'),
           value: omit(typedData?.value, '__typename')
         }).then((signature) => {
+          setUserSigNonce(userSigNonce + 1)
           const { v, r, s } = splitSignature(signature)
           const sig = { v, r, s, deadline: typedData.value.deadline }
           const inputStruct = {
@@ -157,8 +141,8 @@ const Create: NextPage = () => {
           }
           if (RELAY_ON) {
             broadcast({ variables: { request: { id, signature } } }).then(
-              ({ data: { broadcast }, errors }) => {
-                if (errors || broadcast?.reason === 'NOT_ALLOWED') {
+              ({ data, errors }) => {
+                if (errors || data?.broadcast?.reason === 'NOT_ALLOWED') {
                   write({ args: inputStruct })
                 }
               }
@@ -175,58 +159,57 @@ const Create: NextPage = () => {
   )
 
   const createGroup = async (name: string, description: string | null) => {
-    if (!account?.address) {
-      toast.error(CONNECT_WALLET)
-    } else if (activeChain?.id !== CHAIN_ID) {
-      toast.error(WRONG_NETWORK)
-    } else {
-      setIsUploading(true)
-      const { path } = await uploadToIPFS({
-        version: '1.0.0',
-        metadata_id: generateSnowflake(),
-        description: description,
-        content: description,
-        external_url: null,
-        image: avatar
-          ? avatar
-          : `https://avatar.tobi.sh/${generateSnowflake()}.png`,
-        imageMimeType: avatarType,
-        name: name,
-        attributes: [
-          {
-            traitType: 'string',
-            key: 'type',
-            value: 'group'
-          }
-        ],
-        media: [],
-        appId: 'BCharity Group'
-      }).finally(() => setIsUploading(false))
+    if (!isAuthenticated) return toast.error(CONNECT_WALLET)
 
-      createPostTypedData({
-        variables: {
-          request: {
-            profileId: currentUser?.id,
-            contentURI: `https://ipfs.infura.io/ipfs/${path}`,
-            collectModule: {
-              freeCollectModule: {
-                followerOnly: false
-              }
-            },
-            referenceModule: {
-              followerOnlyReferenceModule: false
+    setIsUploading(true)
+    const { path } = await uploadToIPFS({
+      version: '1.0.0',
+      metadata_id: generateSnowflake(),
+      description: description,
+      content: description,
+      external_url: null,
+      image: avatar
+        ? avatar
+        : `https://avatar.tobi.sh/${generateSnowflake()}.png`,
+      imageMimeType: avatarType,
+      name: name,
+      contentWarning: null, // TODO
+      attributes: [
+        {
+          traitType: 'string',
+          key: 'type',
+          value: 'group'
+        }
+      ],
+      media: [],
+      createdOn: new Date(),
+      appId: `${APP_NAME} Group`
+    }).finally(() => setIsUploading(false))
+
+    createPostTypedData({
+      variables: {
+        options: { overrideSigNonce: userSigNonce },
+        request: {
+          profileId: currentUser?.id,
+          contentURI: `https://ipfs.infura.io/ipfs/${path}`,
+          collectModule: {
+            freeCollectModule: {
+              followerOnly: false
             }
+          },
+          referenceModule: {
+            followerOnlyReferenceModule: false
           }
         }
-      })
-    }
+      }
+    })
   }
 
-  if (!currentUser) return <Custom404 />
+  if (!isAuthenticated) return <Custom404 />
 
   return (
     <GridLayout>
-      <SEO title="Create Group • BCharity" />
+      <SEO title={`Create Group • ${APP_NAME}`} />
       <GridItemFour>
         <SettingsHelper
           heading="Create group"
@@ -256,7 +239,7 @@ const Create: NextPage = () => {
               <Input
                 label="Name"
                 type="text"
-                placeholder="education"
+                placeholder="minecraft"
                 {...form.register('name')}
               />
               <TextArea
@@ -286,35 +269,30 @@ const Create: NextPage = () => {
                   </div>
                 </div>
               </div>
-              <div className="ml-auto">
-                {activeChain?.id !== CHAIN_ID ? (
-                  <SwitchNetwork />
-                ) : (
-                  <Button
-                    type="submit"
-                    disabled={
-                      typedDataLoading ||
-                      isUploading ||
-                      signLoading ||
-                      writeLoading ||
-                      broadcastLoading
-                    }
-                    icon={
-                      typedDataLoading ||
-                      isUploading ||
-                      signLoading ||
-                      writeLoading ||
-                      broadcastLoading ? (
-                        <Spinner size="xs" />
-                      ) : (
-                        <PlusIcon className="w-4 h-4" />
-                      )
-                    }
-                  >
-                    Create
-                  </Button>
-                )}
-              </div>
+              <Button
+                className="ml-auto"
+                type="submit"
+                disabled={
+                  typedDataLoading ||
+                  isUploading ||
+                  signLoading ||
+                  writeLoading ||
+                  broadcastLoading
+                }
+                icon={
+                  typedDataLoading ||
+                  isUploading ||
+                  signLoading ||
+                  writeLoading ||
+                  broadcastLoading ? (
+                    <Spinner size="xs" />
+                  ) : (
+                    <PlusIcon className="w-4 h-4" />
+                  )
+                }
+              >
+                Create
+              </Button>
             </Form>
           )}
         </Card>

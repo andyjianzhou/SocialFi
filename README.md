@@ -1,7 +1,7 @@
 <div align="center">
     <img src="public/logo.jpg" height="70" alt="BCharity Logo">
     <h1>BCharity</h1>
-    <strong>Community-driven, decentralized, and permissionless public good social media Web3.0</strong>
+    <strong>Group-driven, decentralized, and permissionless public good social media Web3.0</strong>
 </div>
 <br>
 <div align="center">

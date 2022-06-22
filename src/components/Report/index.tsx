@@ -11,16 +11,15 @@ import { ErrorMessage } from '@components/UI/ErrorMessage'
 import { Form, useZodForm } from '@components/UI/Form'
 import { Spinner } from '@components/UI/Spinner'
 import { TextArea } from '@components/UI/TextArea'
-import AppContext from '@components/utils/AppContext'
 import SEO from '@components/utils/SEO'
 import { PencilAltIcon } from '@heroicons/react/outline'
 import { CheckCircleIcon } from '@heroicons/react/solid'
 import consoleLog from '@lib/consoleLog'
-import trackEvent from '@lib/trackEvent'
 import { useRouter } from 'next/router'
-import React, { FC, useContext, useState } from 'react'
-import { ZERO_ADDRESS } from 'src/constants'
+import React, { FC, useState } from 'react'
+import { APP_NAME, ZERO_ADDRESS } from 'src/constants'
 import Custom404 from 'src/pages/404'
+import { usePersistStore } from 'src/store'
 import { object, string } from 'zod'
 
 import Reason from './Reason'
@@ -45,15 +44,13 @@ const Report: FC = () => {
   } = useRouter()
   const [type, setType] = useState<string>('')
   const [subReason, setSubReason] = useState<string>('')
-  const { currentUser } = useContext(AppContext)
+  const { currentUser } = usePersistStore()
   const { data, loading, error } = useQuery(POST_QUERY, {
     variables: {
       request: { publicationId: id },
       followRequest: {
         followInfos: {
-          followerAddress: currentUser?.ownedBy
-            ? currentUser?.ownedBy
-            : ZERO_ADDRESS,
+          followerAddress: currentUser?.ownedBy ?? ZERO_ADDRESS,
           profileId: id?.toString().split('-')[0]
         }
       }
@@ -77,7 +74,6 @@ const Report: FC = () => {
   })
 
   const reportPublication = (additionalComments: string | null) => {
-    trackEvent('report')
     createReport({
       variables: {
         request: {
@@ -98,7 +94,7 @@ const Report: FC = () => {
 
   return (
     <GridLayout>
-      <SEO title="Report • BCharity" />
+      <SEO title={`Report • ${APP_NAME}`} />
       <GridItemFour>
         <SettingsHelper
           heading="Report publication"

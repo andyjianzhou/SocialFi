@@ -1,14 +1,13 @@
 import { NextLink } from '@components/Shared/Navbar/MenuItems'
-import AppContext from '@components/utils/AppContext'
 import { BCharityPost } from '@generated/bcharitytypes'
 import { Menu, Transition } from '@headlessui/react'
 import {
   DotsHorizontalIcon,
   ShieldExclamationIcon
 } from '@heroicons/react/outline'
-import trackEvent from '@lib/trackEvent'
 import clsx from 'clsx'
-import { FC, Fragment, useContext } from 'react'
+import { FC, Fragment } from 'react'
+import { usePersistStore } from 'src/store'
 
 import Delete from './Delete'
 import Embed from './Embed'
@@ -19,7 +18,7 @@ interface Props {
 }
 
 const PostMenu: FC<Props> = ({ post }) => {
-  const { currentUser } = useContext(AppContext)
+  const { currentUser } = usePersistStore()
 
   return (
     <Menu as="div">
@@ -51,7 +50,6 @@ const PostMenu: FC<Props> = ({ post }) => {
                 <Menu.Item
                   as={NextLink}
                   href={`/report/${post?.id}`}
-                  onClick={() => trackEvent('report menu')}
                   className={({ active }: { active: boolean }) =>
                     clsx(
                       { 'dropdown-active': active },

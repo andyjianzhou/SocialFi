@@ -5,15 +5,14 @@ import { Card } from '@components/UI/Card'
 import { EmptyState } from '@components/UI/EmptyState'
 import { ErrorMessage } from '@components/UI/ErrorMessage'
 import { Spinner } from '@components/UI/Spinner'
-import AppContext from '@components/utils/AppContext'
 import { BCharityPost } from '@generated/bcharitytypes'
 import { PaginatedResultInfo } from '@generated/types'
 import { CommentFields } from '@gql/CommentFields'
 import { CollectionIcon } from '@heroicons/react/outline'
 import consoleLog from '@lib/consoleLog'
-import { useRouter } from 'next/router'
-import React, { FC, useContext, useState } from 'react'
+import React, { FC, useState } from 'react'
 import { useInView } from 'react-cool-inview'
+import { usePersistStore } from 'src/store'
 
 import ReferenceAlert from '../Shared/ReferenceAlert'
 import NewComment from './NewComment'
@@ -51,17 +50,16 @@ const Feed: FC<Props> = ({
   onlyFollowers = false,
   isFollowing = true
 }) => {
-  const {
-    query: { id }
-  } = useRouter()
-  const { currentUser } = useContext(AppContext)
+  const pubId = post?.__typename === 'Mirror' ? post?.mirrorOf?.id : post?.id
+  const { currentUser } = usePersistStore()
   const [publications, setPublications] = useState<BCharityPost[]>([])
   const [pageInfo, setPageInfo] = useState<PaginatedResultInfo>()
   const { data, loading, error, fetchMore } = useQuery(COMMENT_FEED_QUERY, {
     variables: {
-      request: { commentsOf: id, limit: 10 }
+      request: { commentsOf: pubId, limit: 10 },
+      reactionRequest: currentUser ? { profileId: currentUser?.id } : null
     },
-    skip: !id,
+    skip: !pubId,
     fetchPolicy: 'no-cache',
     onCompleted(data) {
       setPageInfo(data?.publications?.pageInfo)
@@ -69,7 +67,7 @@ const Feed: FC<Props> = ({
       consoleLog(
         'Query',
         '#8b5cf6',
-        `Fetched first 10 comments of Publication:${id}`
+        `Fetched first 10 comments of Publication:${pubId}`
       )
     }
   })
@@ -79,10 +77,11 @@ const Feed: FC<Props> = ({
       fetchMore({
         variables: {
           request: {
-            commentsOf: post?.id,
+            commentsOf: pubId,
             cursor: pageInfo?.next,
             limit: 10
-          }
+          },
+          reactionRequest: currentUser ? { profileId: currentUser?.id } : null
         }
       }).then(({ data }: any) => {
         setPageInfo(data?.publications?.pageInfo)
@@ -90,7 +89,7 @@ const Feed: FC<Props> = ({
         consoleLog(
           'Query',
           '#8b5cf6',
-          `Fetched next 10 comments of Publication:${id} Next:${pageInfo?.next}`
+          `Fetched next 10 comments of Publication:${pubId} Next:${pageInfo?.next}`
         )
       })
     }
@@ -123,7 +122,7 @@ const Feed: FC<Props> = ({
         <>
           <Card className="divide-y-[1px] dark:divide-gray-700/80">
             {publications?.map((post: BCharityPost, index: number) => (
-              <SinglePost key={`${post?.id}_${index}`} post={post} hideType />
+              <SinglePost key={`${pubId}_${index}`} post={post} hideType />
             ))}
           </Card>
           {pageInfo?.next && publications.length !== pageInfo?.totalCount && (

@@ -1,15 +1,14 @@
 import { gql, useMutation } from '@apollo/client'
 import { Tooltip } from '@components/UI/Tooltip'
-import AppContext from '@components/utils/AppContext'
 import { BCharityPost } from '@generated/bcharitytypes'
 import { HeartIcon } from '@heroicons/react/outline'
 import { HeartIcon as HeartIconSolid } from '@heroicons/react/solid'
 import humanize from '@lib/humanize'
 import { motion } from 'framer-motion'
-import { FC, useContext, useEffect, useState } from 'react'
+import { FC, useEffect, useState } from 'react'
 import toast from 'react-hot-toast'
 import { CONNECT_WALLET } from 'src/constants'
-import { useAccount } from 'wagmi'
+import { usePersistStore } from 'src/store'
 
 const ADD_REACTION_MUTATION = gql`
   mutation AddReaction($request: ReactionRequest!) {
@@ -28,10 +27,9 @@ interface Props {
 }
 
 const Like: FC<Props> = ({ post }) => {
-  const { currentUser } = useContext(AppContext)
+  const { isAuthenticated, currentUser } = usePersistStore()
   const [liked, setLiked] = useState<boolean>(false)
   const [count, setCount] = useState<number>(0)
-  const { data: account } = useAccount()
 
   useEffect(() => {
     if (post?.mirrorOf?.stats?.totalUpvotes || post?.stats?.totalUpvotes) {
@@ -64,31 +62,29 @@ const Like: FC<Props> = ({ post }) => {
   })
 
   const createLike = () => {
-    if (!account?.address) {
-      toast.error(CONNECT_WALLET)
-    } else {
-      const variable = {
-        variables: {
-          request: {
-            profileId: currentUser?.id,
-            reaction: 'UPVOTE',
-            publicationId:
-              post.__typename === 'Mirror'
-                ? post?.mirrorOf?.id
-                : post?.pubId ?? post?.id
-          }
+    if (!isAuthenticated) return toast.error(CONNECT_WALLET)
+
+    const variable = {
+      variables: {
+        request: {
+          profileId: currentUser?.id,
+          reaction: 'UPVOTE',
+          publicationId:
+            post.__typename === 'Mirror'
+              ? post?.mirrorOf?.id
+              : post?.pubId ?? post?.id
         }
       }
+    }
 
-      if (liked) {
-        setLiked(false)
-        setCount(count - 1)
-        removeReaction(variable)
-      } else {
-        setLiked(true)
-        setCount(count + 1)
-        addReaction(variable)
-      }
+    if (liked) {
+      setLiked(false)
+      setCount(count - 1)
+      removeReaction(variable)
+    } else {
+      setLiked(true)
+      setCount(count + 1)
+      addReaction(variable)
     }
   }
 
@@ -99,7 +95,7 @@ const Like: FC<Props> = ({ post }) => {
       aria-label="Like"
     >
       <div className="flex items-center space-x-1 text-pink-500">
-        <div className="p-1.5 rounded-full hover:bg-opacity-20 hover:bg-pink-300">
+        <div className="p-1.5 rounded-full hover:bg-pink-300 hover:bg-opacity-20">
           <Tooltip
             placement="top"
             content={liked ? 'Unlike' : 'Like'}

@@ -4,7 +4,6 @@ import Footer from '@components/Shared/Footer'
 import PostsShimmer from '@components/Shared/Shimmer/PostsShimmer'
 import UserProfile from '@components/Shared/UserProfile'
 import { Card, CardBody } from '@components/UI/Card'
-import AppContext from '@components/utils/AppContext'
 import SEO from '@components/utils/SEO'
 import { BCharityPost } from '@generated/bcharitytypes'
 import { CommentFields } from '@gql/CommentFields'
@@ -15,10 +14,11 @@ import { apps } from 'data/apps'
 import { NextPage } from 'next'
 import dynamic from 'next/dynamic'
 import { useRouter } from 'next/router'
-import React, { useContext } from 'react'
-import { ZERO_ADDRESS } from 'src/constants'
+import React from 'react'
+import { APP_NAME, ZERO_ADDRESS } from 'src/constants'
 import Custom404 from 'src/pages/404'
 import Custom500 from 'src/pages/500'
+import { usePersistStore } from 'src/store'
 
 import IPFSHash from './IPFSHash'
 import PostPageShimmer from './Shimmer'
@@ -72,18 +72,17 @@ const ViewPost: NextPage = () => {
     query: { id }
   } = useRouter()
 
-  const { currentUser } = useContext(AppContext)
+  const { currentUser } = usePersistStore()
   const { data, loading, error } = useQuery(POST_QUERY, {
     variables: {
       request: { publicationId: id },
       followRequest: {
         followInfos: {
-          followerAddress: currentUser?.ownedBy
-            ? currentUser?.ownedBy
-            : ZERO_ADDRESS,
+          followerAddress: currentUser?.ownedBy ?? ZERO_ADDRESS,
           profileId: id?.toString().split('-')[0]
         }
-      }
+      },
+      reactionRequest: currentUser ? { profileId: currentUser?.id } : null
     },
     skip: !id,
     onCompleted() {
@@ -105,7 +104,7 @@ const ViewPost: NextPage = () => {
   return (
     <GridLayout>
       <SEO
-        title={`${post?.__typename} by @${post?.profile?.handle} • BCharity`}
+        title={`${post?.__typename} by @${post?.profile?.handle} • ${APP_NAME}`}
       />
       <GridItemEight className="space-y-5">
         <Card>

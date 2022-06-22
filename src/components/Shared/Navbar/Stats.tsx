@@ -33,9 +33,7 @@ const LENSTER_STATS_QUERY = gql`
         value
       }
     }
-    communityStats: globalProtocolStats(
-      request: { sources: "BCharity Group" }
-    ) {
+    groupStats: globalProtocolStats(request: { sources: "BCharity Group" }) {
       totalPosts
     }
     fundraiseStats: globalProtocolStats(
@@ -85,7 +83,7 @@ const Stats: FC = () => {
     return <div className="m-3 font-bold text-red-500">{ERROR_MESSAGE}</div>
 
   const stats: GlobalProtocolStats = data?.globalProtocolStats
-  const communityStats: GlobalProtocolStats = data?.communityStats
+  const groupStats: GlobalProtocolStats = data?.groupStats
   const fundraiseStats: GlobalProtocolStats = data?.fundraiseStats
 
   return (
@@ -137,7 +135,7 @@ const Stats: FC = () => {
         icon={<UsersIcon className="w-4 h-4" />}
         title={
           <span>
-            <b>{humanize(communityStats?.totalPosts)}</b> total groups
+            <b>{humanize(groupStats?.totalPosts)}</b> total groups
           </span>
         }
         isBCharity

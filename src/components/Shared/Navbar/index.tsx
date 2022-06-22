@@ -1,12 +1,14 @@
-import AppContext from '@components/utils/AppContext'
+import { gql, useQuery } from '@apollo/client'
 import { Disclosure } from '@headlessui/react'
 import { MenuIcon, XIcon } from '@heroicons/react/outline'
+import hasPrideLogo from '@lib/hasPrideLogo'
 import isStaff from '@lib/isStaff'
 import clsx from 'clsx'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { useRouter } from 'next/router'
-import { FC, useContext } from 'react'
+import { FC } from 'react'
+import { usePersistStore } from 'src/store'
 
 import MenuItems from './MenuItems'
 import MoreNavItems from './MoreNavItems'
@@ -16,8 +18,18 @@ const StaffBar = dynamic(() => import('./StaffBar'))
 const NewPostModal = dynamic(() => import('../../Post/NewPost/Modal'))
 const Notification = dynamic(() => import('../../Notification'))
 
+const PING_QUERY = gql`
+  query Ping {
+    ping
+  }
+`
+
 const Navbar: FC = () => {
-  const { currentUser, staffMode } = useContext(AppContext)
+  const { currentUser, staffMode } = usePersistStore()
+  const { data: pingData } = useQuery(PING_QUERY, {
+    pollInterval: 3000,
+    skip: !currentUser
+  })
 
   interface NavItemProps {
     url: string
@@ -84,14 +96,21 @@ const Navbar: FC = () => {
                   )}
                 </Disclosure.Button>
                 <Link href="/" prefetch={false}>
-                  <div className="inline-flex flex-grow justify-between items-center font-bold text-blue-900">
-                    <a href="/">
-                      <div className="text-3xl font-black">
-                        <img className="w-8 h-8" src="/logo.jpg" alt="Logo" />
-                      </div>
-                    </a>
-                    <span className="flex fle-grow ml-3 mr-3">BCharity</span>
-                  </div>
+                  <a href="/">
+                    <div className="text-3xl font-black">
+                      <img
+                        className="w-8 h-8"
+                        height={32}
+                        width={32}
+                        src={
+                          currentUser && hasPrideLogo(currentUser)
+                            ? '/pride.svg'
+                            : '/logo.svg'
+                        }
+                        alt="Logo"
+                      />
+                    </div>
+                  </a>
                 </Link>
                 <div className="hidden sm:block sm:ml-6">
                   <div className="flex items-center space-x-4">
@@ -105,7 +124,7 @@ const Navbar: FC = () => {
               <div className="flex gap-8 items-center">
                 {currentUser && <NewPostModal />}
                 {currentUser && <Notification />}
-                <MenuItems />
+                <MenuItems pingData={pingData} />
               </div>
             </div>
           </div>
