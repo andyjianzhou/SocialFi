@@ -1,16 +1,16 @@
 export const apps = [
   {
-    id: 'BCharity',
+    id: 'bcharity',
     name: 'BCharity',
     logo: 'logo.jpg'
   },
   {
-    id: 'Lensfrens',
+    id: 'lensfrens',
     name: 'Lensfrens',
     logo: 'lensfrens.jpg'
   },
   {
-    id: 'Lenster',
+    id: 'lenster',
     name: 'Lenster',
     logo: 'lenster.svg'
   },
